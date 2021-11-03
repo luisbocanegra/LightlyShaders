@@ -20,11 +20,12 @@
 #ifndef LIGHTLYSHADERS_H
 #define LIGHTLYSHADERS_H
 
-#include <kwineffects.h>
+#include <kwindeformeffect.h>
 
 namespace KWin { class GLTexture; }
 
-class Q_DECL_EXPORT LightlyShadersEffect : public KWin::Effect
+class Q_DECL_EXPORT LightlyShadersEffect : public KWin::DeformEffect
+
 {
     Q_OBJECT
 public:
@@ -49,6 +50,9 @@ public:
     void paintWindow(KWin::EffectWindow* w, int mask, QRegion region, KWin::WindowPaintData& data);
     virtual int requestedEffectChainPosition() const { return 99; }
 
+protected:
+    void deform(KWin::EffectWindow *w, int mask, KWin::WindowPaintData &data, KWin::WindowQuadList &quads);
+
 protected Q_SLOTS:
     void windowAdded(KWin::EffectWindow *window);
 
@@ -58,7 +62,7 @@ private:
     KWin::GLTexture *m_rect[NTex];
     KWin::GLTexture *m_dark_rect[NTex];
     int m_size, m_rSize, m_alpha;
-    bool m_outline, m_dark_theme;
+    bool m_outline, m_dark_theme, m_deform;
     QSize m_corner;
     QRegion m_updateRegion;
     KWin::GLShader *m_shader;

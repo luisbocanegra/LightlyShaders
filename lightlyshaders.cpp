@@ -38,7 +38,7 @@ KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(  LightlyShadersFactory,
                                         return LightlyShadersEffect::enabledByDefault();)
 
 
-LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
+LightlyShadersEffect::LightlyShadersEffect() : KWin::DeformEffect(), m_shader(0)
 {
     new KWin::EffectAdaptor(this);
     QDBusConnection::sessionBus().registerObject("/LightlyShaders", this);
@@ -81,7 +81,7 @@ LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
                 if (KWin::EffectWindow *win = KWin::effects->findWindow(KWindowSystem::windows().at(i)))
                     windowAdded(win);
             connect(KWin::effects, &KWin::EffectsHandler::windowAdded, this, &LightlyShadersEffect::windowAdded);
-            connect(KWin::effects, &KWin::EffectsHandler::windowClosed, this, [this](){m_managed.removeOne(static_cast<KWin::EffectWindow *>(sender()));});
+            connect(KWin::effects, &KWin::EffectsHandler::windowClosed, this, [this](){m_managed.removeOne(dynamic_cast<KWin::EffectWindow *>(sender()));});
         }
         else
             qDebug() << "LightlyShaders: no valid shaders found! LightlyShaders will not work.";
@@ -111,13 +111,24 @@ LightlyShadersEffect::~LightlyShadersEffect()
 void
 LightlyShadersEffect::windowAdded(KWin::EffectWindow *w)
 {
-    if (m_managed.contains(w))
+    if (m_managed.contains(w)
+            || w->windowType() == NET::WindowType::OnScreenDisplay
+            || w->windowType() == NET::WindowType::Dock)
         return;
+//    qDebug() << w->windowRole() << w->windowType() << w->windowClass();
     if (!w->hasDecoration() && (w->windowClass().contains("plasma", Qt::CaseInsensitive)
             || w->windowClass().contains("krunner", Qt::CaseInsensitive)
-            || w->windowClass().contains("latte-dock", Qt::CaseInsensitive)))
+            || w->windowClass().contains("latte-dock", Qt::CaseInsensitive)
+            || w->windowClass().contains("lattedock", Qt::CaseInsensitive)))
+        return;
+
+    if (w->windowClass().contains("plasma", Qt::CaseInsensitive) && !w->isNormalWindow() && !w->isDialog() && !w->isModal())
+        return;
+
+    if (!w->isPaintingEnabled() || (w->isDesktop()) || w->isPopupMenu())
         return;
     m_managed << w;
+    redirect(w);
 }
 
 void
@@ -223,23 +234,19 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
 }
 
 void
-#if KWIN_EFFECT_API_VERSION >= 232
 LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaintData &data, std::chrono::milliseconds time)
-#else
-LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaintData &data, int time)
-#endif
 {
+    //qDebug() << "prePaintWindow called";
     if (!m_shader->isValid()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
 //            || KWin::effects->hasActiveFullScreenEffect()
-            || w->isDesktop()
-            || data.quads.isTransformed())
+            || w->isDesktop())
     {
         KWin::effects->prePaintWindow(w, data, time);
         return;
     }
-    const QRect geo(w->geometry());
+    const QRect geo(w->frameGeometry());
     const QRect rect[NTex] =
     {
         QRect(geo.topLeft(), m_corner),
@@ -259,11 +266,10 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
     KWin::effects->prePaintWindow(w, data, time);
 }
 
-static bool hasShadow(KWin::WindowQuadList &qds)
+static bool hasShadow(KWin::EffectWindow *w)
 {
-    for (int i = 0; i < qds.count(); ++i)
-        if (qds.at(i).type() == KWin::WindowQuadShadow)
-            return true;
+    if(w->expandedGeometry().size() != w->frameGeometry().size())
+        return true;
     return false;
 }
 
@@ -275,16 +281,15 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
             || !w->isPaintingEnabled()
 //            || KWin::effects->hasActiveFullScreenEffect()
             || w->isDesktop()
-            || data.quads.isTransformed()
             || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))
-            || !hasShadow(data.quads))
+            || !hasShadow(w))
     {
         KWin::effects->paintWindow(w, mask, region, data);
         return;
     }
 
     //map the corners
-    const QRect geo(w->geometry());
+    const QRect geo(w->frameGeometry());
     const QRect rect[NTex] =
     {
         QRect(geo.topLeft(), m_corner),
@@ -293,25 +298,29 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         QRect(geo.bottomLeft()-QPoint(0, m_size-1), m_corner)
     };
 
-    const KWin::WindowQuadList qds(data.quads);
     //paint the shadow
-    data.quads = qds.select(KWin::WindowQuadShadow);
-    KWin::effects->paintWindow(w, mask, region, data);
+    QRect expanded_geo = w->expandedGeometry();
+    QRegion shadow_region(w->expandedGeometry());
+    QRect frame_geo = QRect(w->frameGeometry().x()+m_rSize,w->frameGeometry().y()+m_rSize,w->frameGeometry().width()-m_rSize*2,w->frameGeometry().height()-m_rSize*2);
+    shadow_region -= frame_geo;
+    m_deform = true;
+    KWin::effects->paintWindow(w, PAINT_WINDOW_TRANSFORMED, shadow_region, data);
+    m_deform = false;
 
     //copy the corner regions
-    KWin::GLTexture tex[NTex];
+    QList<KWin::GLTexture> tex;
     const QRect s(KWin::effects->virtualScreenGeometry());
     for (int i = 0; i < NTex; ++i)
     {
-        tex[i] = KWin::GLTexture(GL_RGBA8, rect[i].size());
-        tex[i].bind();
+        KWin::GLTexture t = KWin::GLTexture(GL_RGBA8, rect[i].size());
+        t.bind();
         glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, rect[i].x(), s.height() - rect[i].y() - rect[i].height(), rect[i].width(), rect[i].height());
-        tex[i].unbind();
+        t.unbind();
+        tex.append(t);
     }
 
     //paint the actual window
-    data.quads = qds.filterOut(KWin::WindowQuadShadow);
-    KWin::effects->paintWindow(w, mask, region, data);
+    KWin::effects->paintWindow(w, mask, w->frameGeometry(), data);
 
     //'shape' the corners
     glEnable(GL_BLEND);
@@ -333,7 +342,6 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         m_tex[3-i]->unbind();
     }
     sm->popShader();
-    data.quads = qds;
 
     // outline
     if (m_outline && data.brightness() == 1.0 && data.crossFadeProgress() == 1.0)
@@ -355,11 +363,9 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
 
         for (int i = 0; i < NTex; ++i)
         {
-            QMatrix4x4 modelViewProjection;
-            modelViewProjection.ortho(0, s.width(), s.height(), 0, 0, 65535);
+            QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
             modelViewProjection.translate(rrect[i].x(), rrect[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
-
             m_rect[i]->bind();
             m_rect[i]->render(region, rrect[i]);
             m_rect[i]->unbind();
@@ -379,11 +385,9 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         shader->setUniform(KWin::GLShader::ModulationConstant, QVector4D(o, o, o, o));
         for (int i = 0; i < NTex; ++i)
         {
-            QMatrix4x4 modelViewProjection;
-            modelViewProjection.ortho(0, s.width(), s.height(), 0, 0, 65535);
+            QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
             modelViewProjection.translate(nrect[i].x(), nrect[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
-
             m_dark_rect[i]->bind();
             m_dark_rect[i]->render(region, nrect[i]);
             m_dark_rect[i]->unbind();
@@ -392,9 +396,11 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         KWin::ShaderManager::instance()->popShader();
         
         QRegion reg = geo;
+        QMatrix4x4 mvp = data.screenProjectionMatrix();
 
         //Outline
         shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::UniformColor);
+        shader->setUniform("modelViewProjectionMatrix", mvp);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         reg -= QRegion(geo.adjusted(1, 1, -1, -1));
         for (int i = 0; i < 4; ++i)
@@ -404,22 +410,57 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
 
         //Borderline
         shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::UniformColor);
+        shader->setUniform("modelViewProjectionMatrix", mvp);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         reg = QRegion(geo.adjusted(-1, -1, 1, 1));
         reg -= geo;
         for (int i = 0; i < 4; ++i)
             reg -= rrect[i];
-
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         if(m_dark_theme)
             fillRegion(reg, QColor(0, 0, 0, 255*data.opacity()));
         else
             fillRegion(reg, QColor(0, 0, 0, m_alpha*data.opacity()));
-
         KWin::ShaderManager::instance()->popShader();
     }
 
     glDisable(GL_BLEND);
 }
+
+void
+LightlyShadersEffect::deform(KWin::EffectWindow *w, int mask, KWin::WindowPaintData &data, KWin::WindowQuadList &quads)
+{
+    if(!m_deform) {
+        return;
+    }
+
+    QRect expanded_geo = w->expandedGeometry();
+    QRect frame_geo = w->frameGeometry();
+
+    quads = quads.splitAtY(frame_geo.height()/2-m_rSize);
+    quads = quads.splitAtY(frame_geo.height()/2+m_rSize);
+    quads = quads.splitAtX(frame_geo.width()/2-m_rSize);
+    quads = quads.splitAtX(frame_geo.width()/2+m_rSize);
+
+    //qDebug() << quads.count();
+
+    for (int j = 0; j < 4; ++j) {
+        quads[0][j].move(quads[0][j].x()+m_rSize, quads[0][j].y()+m_rSize);
+        quads[2][j].move(quads[2][j].x()-m_rSize, quads[2][j].y()+m_rSize);
+        quads[6][j].move(quads[6][j].x()+m_rSize, quads[6][j].y()-m_rSize);
+        quads[8][j].move(quads[8][j].x()-m_rSize, quads[8][j].y()-m_rSize);
+    }
+
+    KWin::WindowQuadList new_quads;
+    for (int i = 0; i < 9; ++i)
+    {
+        if (i==1) continue;
+        if (i>=3 && i<=5) continue;
+        if (i==7) continue;
+        new_quads.append(quads[i]);
+    }
+    quads = new_quads;
+}
+
 
 void
 LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
@@ -450,7 +491,7 @@ LightlyShadersEffect::enabledByDefault()
 
 bool LightlyShadersEffect::supported()
 {
-    return KWin::effects->isOpenGLCompositing() && KWin::GLRenderTarget::supported();
+    return DeformEffect::supported() && KWin::GLRenderTarget::supported();
 }
 
 #include "lightlyshaders.moc"
