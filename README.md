@@ -4,6 +4,8 @@
  This fork additionally implements two options:
  - an option to invert the color of the outline around the window; 
  - an option to add a dark outer border.
+
+ Also it fixes the infamous [bug](https://bugs.kde.org/show_bug.cgi?id=395725) with blurred corners, though in a somehow hacky way. 
  
  # Dependencies:
  
