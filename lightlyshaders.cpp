@@ -128,7 +128,6 @@ LightlyShadersEffect::windowAdded(KWin::EffectWindow *w)
     if (!w->isPaintingEnabled() || (w->isDesktop()) || w->isPopupMenu())
         return;
     m_managed << w;
-    redirect(w);
 }
 
 void
@@ -233,6 +232,17 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
     setRoundness(conf.readEntry("roundness", 5));
 }
 
+/*void
+LightlyShadersEffect::prePaintScreen(KWin::ScreenPrePaintData& data, std::chrono::milliseconds presentTime)
+{
+    // We need to mark the screen windows as transformed. Otherwise the
+    // whole screen won't be repainted, resulting in artefacts.
+    data.mask |= PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS;
+
+    KWin::effects->prePaintScreen(data, presentTime);
+}*/
+
+
 void
 LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaintData &data, std::chrono::milliseconds time)
 {
@@ -240,13 +250,14 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
     if (!m_shader->isValid()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
-//            || KWin::effects->hasActiveFullScreenEffect()
+            || KWin::effects->hasActiveFullScreenEffect()
             || w->isDesktop())
     {
         KWin::effects->prePaintWindow(w, data, time);
+        unredirect(w);
         return;
     }
-    const QRect geo(w->frameGeometry());
+    /*const QRect geo(w->frameGeometry());
     const QRect rect[NTex] =
     {
         QRect(geo.topLeft(), m_corner),
@@ -258,9 +269,10 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
     {
         data.paint += rect[i];
         data.clip -= rect[i];
-    }
-    QRegion outerRect(QRegion(geo.adjusted(-1, -1, 1, 1))-geo.adjusted(1, 1, -1, -1));
+    }*/
+    //QRegion outerRect(QRegion(geo.adjusted(-1, -1, 1, 1))-geo.adjusted(1, 1, -1, -1));
     //outerRect += QRegion(geo.x()+m_size, geo.y(), geo.width()-m_size*2, 1);
+    QRegion outerRect(w->expandedGeometry());
     data.paint += outerRect;
     data.clip -=outerRect;
     KWin::effects->prePaintWindow(w, data, time);
@@ -279,14 +291,24 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     if (!m_shader->isValid()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
-//            || KWin::effects->hasActiveFullScreenEffect()
+            || KWin::effects->hasActiveFullScreenEffect()
             || w->isDesktop()
             || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))
             || !hasShadow(w))
     {
         KWin::effects->paintWindow(w, mask, region, data);
+        unredirect(w);
         return;
     }
+
+    //paint the shadow
+    redirect(w);
+    QRegion shadow_region(w->expandedGeometry());
+    QRect frame_geo = QRect(w->frameGeometry().x()+m_rSize,w->frameGeometry().y()+m_rSize,w->frameGeometry().width()-m_rSize*2,w->frameGeometry().height()-m_rSize*2);
+    shadow_region -= frame_geo;
+    m_deform = true;
+    KWin::effects->paintWindow(w, PAINT_WINDOW_TRANSFORMED, shadow_region, data);
+    m_deform = false;
 
     //map the corners
     const QRect geo(w->frameGeometry());
@@ -297,15 +319,6 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), m_corner),
         QRect(geo.bottomLeft()-QPoint(0, m_size-1), m_corner)
     };
-
-    //paint the shadow
-    QRect expanded_geo = w->expandedGeometry();
-    QRegion shadow_region(w->expandedGeometry());
-    QRect frame_geo = QRect(w->frameGeometry().x()+m_rSize,w->frameGeometry().y()+m_rSize,w->frameGeometry().width()-m_rSize*2,w->frameGeometry().height()-m_rSize*2);
-    shadow_region -= frame_geo;
-    m_deform = true;
-    KWin::effects->paintWindow(w, PAINT_WINDOW_TRANSFORMED, shadow_region, data);
-    m_deform = false;
 
     //copy the corner regions
     QList<KWin::GLTexture> tex;
