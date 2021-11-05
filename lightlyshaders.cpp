@@ -235,6 +235,7 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
 void
 LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaintData &data, std::chrono::milliseconds time)
 {
+    //qDebug() << "prePaintWindow called";
     if (!m_shader->isValid()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
@@ -245,6 +246,21 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
         unredirect(w);
         return;
     }
+    /*const QRect geo(w->frameGeometry());
+    const QRect rect[NTex] =
+    {
+        QRect(geo.topLeft(), m_corner),
+        QRect(geo.topRight()-QPoint(m_size-1, 0), m_corner),
+        QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), m_corner),
+        QRect(geo.bottomLeft()-QPoint(0, m_size-1), m_corner)
+    };
+    for (int i = 0; i < NTex; ++i)
+    {
+        data.paint += rect[i];
+        data.clip -= rect[i];
+    }*/
+    //QRegion outerRect(QRegion(geo.adjusted(-1, -1, 1, 1))-geo.adjusted(1, 1, -1, -1));
+    //outerRect += QRegion(geo.x()+m_size, geo.y(), geo.width()-m_size*2, 1);
     QRegion outerRect(w->expandedGeometry());
     data.paint += outerRect;
     data.clip -=outerRect;
@@ -415,6 +431,9 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
 void
 LightlyShadersEffect::deform(KWin::EffectWindow *w, int mask, KWin::WindowPaintData &data, KWin::WindowQuadList &quads)
 {
+    Q_UNUSED(mask)
+    Q_UNUSED(data)
+
     if(!m_deform) {
         return;
     }
@@ -427,12 +446,34 @@ LightlyShadersEffect::deform(KWin::EffectWindow *w, int mask, KWin::WindowPaintD
     quads = quads.splitAtX(frame_geo.width()/2-m_rSize);
     quads = quads.splitAtX(frame_geo.width()/2+m_rSize);
 
+    //qDebug() << quads.count();
+
     for (int j = 0; j < 4; ++j) {
         quads[0][j].move(quads[0][j].x()+m_rSize, quads[0][j].y()+m_rSize);
         quads[2][j].move(quads[2][j].x()-m_rSize, quads[2][j].y()+m_rSize);
         quads[6][j].move(quads[6][j].x()+m_rSize, quads[6][j].y()-m_rSize);
         quads[8][j].move(quads[8][j].x()-m_rSize, quads[8][j].y()-m_rSize);
     }
+
+    /*quads[0][1].setX(frame_geo.width()/2);
+    quads[0][2].setX(frame_geo.width()/2);
+    quads[0][2].setY(frame_geo.height()/2);
+    quads[0][3].setY(frame_geo.height()/2);
+
+    quads[2][0].setX(frame_geo.width()/2);
+    quads[2][2].setY(frame_geo.height()/2);
+    quads[2][3].setY(frame_geo.height()/2);
+    quads[2][3].setX(frame_geo.width()/2);
+
+    quads[6][0].setY(frame_geo.height()/2);
+    quads[6][1].setX(frame_geo.width()/2);
+    quads[6][1].setY(frame_geo.height()/2);
+    quads[6][2].setX(frame_geo.width()/2);
+
+    quads[8][0].setX(frame_geo.width()/2);
+    quads[8][0].setY(frame_geo.height()/2);
+    quads[8][1].setY(frame_geo.height()/2);
+    quads[8][3].setX(frame_geo.width()/2);*/
 
     KWin::WindowQuadList new_quads;
     for (int i = 0; i < 9; ++i)
