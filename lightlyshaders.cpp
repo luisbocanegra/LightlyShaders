@@ -232,21 +232,9 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
     setRoundness(conf.readEntry("roundness", 5));
 }
 
-/*void
-LightlyShadersEffect::prePaintScreen(KWin::ScreenPrePaintData& data, std::chrono::milliseconds presentTime)
-{
-    // We need to mark the screen windows as transformed. Otherwise the
-    // whole screen won't be repainted, resulting in artefacts.
-    data.mask |= PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS;
-
-    KWin::effects->prePaintScreen(data, presentTime);
-}*/
-
-
 void
 LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaintData &data, std::chrono::milliseconds time)
 {
-    //qDebug() << "prePaintWindow called";
     if (!m_shader->isValid()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
@@ -257,21 +245,6 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
         unredirect(w);
         return;
     }
-    /*const QRect geo(w->frameGeometry());
-    const QRect rect[NTex] =
-    {
-        QRect(geo.topLeft(), m_corner),
-        QRect(geo.topRight()-QPoint(m_size-1, 0), m_corner),
-        QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), m_corner),
-        QRect(geo.bottomLeft()-QPoint(0, m_size-1), m_corner)
-    };
-    for (int i = 0; i < NTex; ++i)
-    {
-        data.paint += rect[i];
-        data.clip -= rect[i];
-    }*/
-    //QRegion outerRect(QRegion(geo.adjusted(-1, -1, 1, 1))-geo.adjusted(1, 1, -1, -1));
-    //outerRect += QRegion(geo.x()+m_size, geo.y(), geo.width()-m_size*2, 1);
     QRegion outerRect(w->expandedGeometry());
     data.paint += outerRect;
     data.clip -=outerRect;
@@ -453,8 +426,6 @@ LightlyShadersEffect::deform(KWin::EffectWindow *w, int mask, KWin::WindowPaintD
     quads = quads.splitAtY(frame_geo.height()/2+m_rSize);
     quads = quads.splitAtX(frame_geo.width()/2-m_rSize);
     quads = quads.splitAtX(frame_geo.width()/2+m_rSize);
-
-    //qDebug() << quads.count();
 
     for (int j = 0; j < 4; ++j) {
         quads[0][j].move(quads[0][j].x()+m_rSize, quads[0][j].y()+m_rSize);
