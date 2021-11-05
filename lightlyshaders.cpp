@@ -276,9 +276,32 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
 
     //paint the shadow
     redirect(w);
+
+    QRect frame_geo = w->frameGeometry();
+
+    QRegion top_left_reg(frame_geo.x(),frame_geo.y(),m_rSize,m_rSize);
+    QRegion top_left_ellipse(frame_geo.x(),frame_geo.y()+m_rSize,m_rSize*2,m_rSize*2,QRegion::Ellipse);
+    top_left_reg = top_left_reg.subtracted(top_left_ellipse);
+
+    QRegion top_right_reg(frame_geo.x()+ frame_geo.width()-m_rSize,frame_geo.y(),m_rSize,m_rSize);
+    QRegion top_right_ellipse(frame_geo.x()+ frame_geo.width()-2*m_rSize,frame_geo.y()+m_rSize,m_rSize*2,m_rSize*2,QRegion::Ellipse);
+    top_right_reg = top_right_reg.subtracted(top_right_ellipse);
+
+    QRegion bottom_right_reg(frame_geo.x()+frame_geo.width()-m_rSize,frame_geo.y()+frame_geo.height()-m_rSize,m_rSize,m_rSize);
+    QRegion bottom_right_ellipse(frame_geo.x()+ frame_geo.width()-2*m_rSize,frame_geo.y()+frame_geo.height()-2*m_rSize,m_rSize*2,m_rSize*2,QRegion::Ellipse);
+    bottom_right_reg = bottom_right_reg.subtracted(bottom_right_ellipse);
+
+    QRegion bottom_left_reg(frame_geo.x(),frame_geo.y()+frame_geo.height()-m_rSize,m_rSize,m_rSize);
+    QRegion bottom_left_ellipse(frame_geo.x(),frame_geo.y()+frame_geo.height()-2*m_rSize,m_rSize*2,m_rSize*2,QRegion::Ellipse);
+    bottom_left_reg = bottom_left_reg.subtracted(bottom_left_ellipse);
+
     QRegion shadow_region(w->expandedGeometry());
-    QRect frame_geo = QRect(w->frameGeometry().x()+m_rSize,w->frameGeometry().y()+m_rSize,w->frameGeometry().width()-m_rSize*2,w->frameGeometry().height()-m_rSize*2);
-    shadow_region -= frame_geo;
+    QRegion exclude(w->frameGeometry());
+    exclude -= top_left_reg;
+    exclude -= top_right_reg;
+    exclude -= bottom_right_reg;
+    exclude -= bottom_left_reg;
+    shadow_region -= exclude;
     m_deform = true;
     KWin::effects->paintWindow(w, PAINT_WINDOW_TRANSFORMED, shadow_region, data);
     m_deform = false;
