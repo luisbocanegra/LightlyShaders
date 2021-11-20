@@ -20,11 +20,11 @@
 #ifndef LIGHTLYSHADERS_H
 #define LIGHTLYSHADERS_H
 
-#include <kwindeformeffect.h>
+#include <kwineffects.h>
 
 namespace KWin { class GLTexture; }
 
-class Q_DECL_EXPORT LightlyShadersEffect : public KWin::DeformEffect
+class Q_DECL_EXPORT LightlyShadersEffect : public KWin::Effect
 
 {
     Q_OBJECT
@@ -40,14 +40,15 @@ public:
     void genRect();
 
     void fillRegion(const QRegion &reg, const QColor &c);
-
+    QList<KWin::GLTexture> getSamples(const QRect* rect);
+    QList<KWin::GLTexture> createShadowTexture(QList<KWin::GLTexture> orig_sample_tex, QList<KWin::GLTexture> shadow_sample_tex, QList<KWin::GLTexture> orig_tex);
+    int normalise(int color);
+    QImage toImage(KWin::GLTexture texture);
+    
     void reconfigure(ReconfigureFlags flags);
     void prePaintWindow(KWin::EffectWindow* w, KWin::WindowPrePaintData& data, std::chrono::milliseconds time);
     void paintWindow(KWin::EffectWindow* w, int mask, QRegion region, KWin::WindowPaintData& data);
     virtual int requestedEffectChainPosition() const { return 99; }
-
-protected:
-    void deform(KWin::EffectWindow *w, int mask, KWin::WindowPaintData &data, KWin::WindowQuadList &quads);
 
 protected Q_SLOTS:
     void windowAdded(KWin::EffectWindow *window);
@@ -58,7 +59,7 @@ private:
     KWin::GLTexture *m_rect[NTex];
     KWin::GLTexture *m_dark_rect[NTex];
     int m_size, m_rSize, m_alpha;
-    bool m_outline, m_dark_theme, m_deform;
+    bool m_outline, m_dark_theme;
     QSize m_corner;
     QRegion m_updateRegion;
     KWin::GLShader *m_shader;
