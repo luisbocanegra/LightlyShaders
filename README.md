@@ -9,7 +9,7 @@
  
  # Dependencies:
  
-From: https://github.com/alex47/KDE-Rounded-Corners
+Plasma >= 5.23.
  
 Debian based (Ubuntu, Kubuntu, KDE Neon):
 ```
