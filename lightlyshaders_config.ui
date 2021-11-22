@@ -26,24 +26,15 @@
         </widget>
        </item>
        <item>
-        <widget class="QSlider" name="roundness">
+        <widget class="QSpinBox" name="roundness">
+         <property name="suffix">
+          <string>px</string>
+         </property>
          <property name="minimum">
           <number>1</number>
          </property>
          <property name="maximum">
           <number>64</number>
-         </property>
-         <property name="pageStep">
-          <number>1</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksBelow</enum>
-         </property>
-         <property name="tickInterval">
-          <number>5</number>
          </property>
         </widget>
        </item>
