@@ -113,8 +113,10 @@ void
 LightlyShadersEffect::windowAdded(KWin::EffectWindow *w)
 {
     if (m_managed.contains(w)
-            || w->windowType() == NET::WindowType::OnScreenDisplay
-            || w->windowType() == NET::WindowType::Dock)
+            || w->windowType() == NET::OnScreenDisplay
+            || w->windowType() == NET::Dock
+            || w->windowType() == NET::Menu
+            || w->windowType() == NET::DropdownMenu)
         return;
 //    qDebug() << w->windowRole() << w->windowType() << w->windowClass();
     if (!w->hasDecoration() && (w->windowClass().contains("plasma", Qt::CaseInsensitive)
