@@ -42,7 +42,7 @@ public:
     void fillRegion(const QRegion &reg, const QColor &c);
     QList<KWin::GLTexture> getSamples(const QRect* rect);
     QList<KWin::GLTexture> createShadowTexture(QList<KWin::GLTexture> orig_sample_tex, QList<KWin::GLTexture> shadow_sample_tex, QList<KWin::GLTexture> orig_tex);
-    int normalise(int color);
+    int normalize(int color);
     QImage toImage(KWin::GLTexture texture);
     
     void reconfigure(ReconfigureFlags flags);
