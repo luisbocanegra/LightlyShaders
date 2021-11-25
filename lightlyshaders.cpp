@@ -66,7 +66,7 @@ static void convertFromGLImage(QImage &img, int w, int h)
         }
 
     }
-    //img = img.mirrored();
+    img = img.mirrored();
 }
 
 LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
@@ -327,9 +327,30 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     if(mask & PAINT_WINDOW_TRANSFORMED) {
         use_outline = false;
     }
-
+    
     //map the corners
     const QRect geo(w->frameGeometry());
+    const QSize size(m_size+1, m_size+1);
+    const QRect big_rect[NTex] =
+    {
+        QRect(geo.topLeft()-QPoint(1,1), size),
+        QRect(geo.topRight()-QPoint(m_size-1, 1), size),
+        QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), size),
+        QRect(geo.bottomLeft()-QPoint(1, m_size-1), size)
+    };
+
+    //copy the empty corner regions
+    QList<KWin::GLTexture> empty_corners_tex = getTexRegions(big_rect);
+    
+    //paint the actual window
+    KWin::effects->paintWindow(w, mask, region, data);
+
+    //get samples with shadow
+    QList<KWin::GLTexture> shadow_corners_tex = getTexRegions(big_rect);
+
+    //generate shadow texture
+    QList<KWin::GLTexture> shadow_tex = createShadowTexture(empty_corners_tex, shadow_corners_tex);
+
     const QRect rect[NTex] =
     {
         QRect(geo.topLeft(), m_corner),
@@ -338,55 +359,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         QRect(geo.bottomLeft()-QPoint(0, m_size-1), m_corner)
     };
 
-    //copy the corner regions
-    QList<KWin::GLTexture> tex;
-    const QRect s(KWin::effects->virtualScreenGeometry());
-    for (int i = 0; i < NTex; ++i)
-    {
-        KWin::GLTexture t = KWin::GLTexture(GL_RGBA8, rect[i].size());
-        t.bind();
-        glCopyTexSubImage2D(
-            GL_TEXTURE_2D, 
-            0, 
-            0, 
-            0, 
-            rect[i].x(), 
-            s.height() - rect[i].y() - rect[i].height(), 
-            rect[i].width(), 
-            rect[i].height()
-        );
-        t.unbind();
-        tex.append(t);
-    }
-
-    //map shadow source regions
-    int a = 0;
-    if(w->windowClass().contains("chrome", Qt::CaseInsensitive))
-    {
-        a = 1;
-    }
-    const QRect shadow_rect[8] =
-    {
-        QRect(geo.topLeft()-QPoint(1+a,1+a), QSize(m_size,1)),
-        QRect(geo.topLeft()-QPoint(1+a,1+a), QSize(1,m_size)),
-        QRect(geo.topRight()-QPoint(m_size+a,1+a), QSize(m_size,1)),
-        QRect(geo.topRight()-QPoint(-1-a, 1+a), QSize(1,m_size)),
-        QRect(geo.bottomRight()-QPoint(-1-a,m_size+a), QSize(1,m_size)),
-        QRect(geo.bottomRight()-QPoint(m_size+a, -1-a), QSize(m_size,1)),
-        QRect(geo.bottomLeft()-QPoint(1+a,m_size+a), QSize(1,m_size)),
-        QRect(geo.bottomLeft()-QPoint(1+a, -1-a), QSize(m_size,1))
-    };
-
-    //get samples without shadow
-    QList<KWin::GLTexture> orig_sample_tex = getSamples(shadow_rect);
-
-    //paint the actual window
-    KWin::effects->paintWindow(w, mask, region, data);
-
-    //get samples with shadow
-    QList<KWin::GLTexture> shadow_sample_tex = getSamples(shadow_rect);
-    
-    //'shape' the corners
+    //Draw rounded corners with shadows    
     glEnable(GL_BLEND);
     const int mvpMatrixLocation = m_shader->uniformLocation("modelViewProjectionMatrix");
     KWin::ShaderManager *sm = KWin::ShaderManager::instance();
@@ -396,60 +369,6 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     {
         QMatrix4x4 mvp = data.screenProjectionMatrix();
         mvp.translate(rect[i].x(), rect[i].y());
-        m_shader->setUniform(mvpMatrixLocation, mvp);
-        glActiveTexture(GL_TEXTURE1);
-        m_tex[3-i]->bind();
-        glActiveTexture(GL_TEXTURE0);
-        tex[i].bind();
-        tex[i].render(region, rect[i]);
-        tex[i].unbind();
-        m_tex[3-i]->unbind();
-    }
-    sm->popShader();
-
-    //get original texture under cut out corners
-    QList<KWin::GLTexture> orig_tex;
-    for (int i = 0; i < NTex; ++i)
-    {
-        KWin::GLTexture t = KWin::GLTexture(GL_RGBA8, rect[i].size());
-        t.bind();
-        glCopyTexSubImage2D(
-            GL_TEXTURE_2D, 
-            0, 
-            0, 
-            0, 
-            rect[i].x(), 
-            s.height() - rect[i].y() - rect[i].height(), 
-            rect[i].width(), 
-            rect[i].height()
-        );
-        t.unbind();
-        orig_tex.append(t);
-    }
-
-    //generate shadow texture
-    QList<KWin::GLTexture> shadow_tex = createShadowTexture(orig_sample_tex, shadow_sample_tex, orig_tex);
-
-    //Draw shadows
-    sm->pushShader(m_shader);
-    for (int i = 0; i < NTex; ++i)
-    {
-        QMatrix4x4 mvp = data.screenProjectionMatrix();
-        switch(i)
-        {
-            case 0:
-                mvp.translate(rect[i].x()-a, rect[i].y()-a);
-                break;
-            case 1:
-                mvp.translate(rect[i].x()+a, rect[i].y()-a);
-                break;
-            case 2:
-                mvp.translate(rect[i].x()+a, rect[i].y()+a);
-                break;
-            case 3:
-                mvp.translate(rect[i].x()-a, rect[i].y()+a);
-                break;
-        }
         m_shader->setUniform(mvpMatrixLocation, mvp);
         glActiveTexture(GL_TEXTURE1);
         m_tex[i]->bind();
@@ -466,10 +385,10 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     {
         const QRect rrect[NTex] =
         {
-            rect[0].adjusted(-1, -1, 0, 0),
-            rect[1].adjusted(0, -1, 1, 0),
-            rect[2].adjusted(0, 0, 1, 1),
-            rect[3].adjusted(-1, 0, 0, 1)
+            rect[TopLeft].adjusted(-1, -1, 0, 0),
+            rect[TopRight].adjusted(0, -1, 1, 0),
+            rect[BottomRight].adjusted(0, 0, 1, 1),
+            rect[BottomLeft].adjusted(-1, 0, 0, 1)
         };
         const float o(data.opacity());
 
@@ -494,10 +413,10 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         //Outer corners
         const QRect nrect[NTex] =
         {
-            rect[0].adjusted(-2, -2, 0, 0),
-            rect[1].adjusted(0, -2, 2, 0),
-            rect[2].adjusted(0, 0, 2, 2),
-            rect[3].adjusted(-2, 0, 0, 2)
+            rect[TopLeft].adjusted(-2, -2, 0, 0),
+            rect[TopRight].adjusted(0, -2, 2, 0),
+            rect[BottomRight].adjusted(0, 0, 2, 2),
+            rect[BottomLeft].adjusted(-2, 0, 0, 2)
         };
         shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::MapTexture|KWin::ShaderTrait::UniformColor|KWin::ShaderTrait::Modulate);
         shader->setUniform(KWin::GLShader::ModulationConstant, QVector4D(o, o, o, o));
@@ -521,7 +440,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         shader->setUniform("modelViewProjectionMatrix", mvp);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         reg -= QRegion(geo.adjusted(1, 1, -1, -1));
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < NTex; ++i)
             reg -= rrect[i];
         fillRegion(reg, QColor(255, 255, 255, m_alpha*data.opacity()));
         KWin::ShaderManager::instance()->popShader();
@@ -532,7 +451,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         reg = QRegion(geo.adjusted(-1, -1, 1, 1));
         reg -= geo;
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < NTex; ++i)
             reg -= rrect[i];
         if(m_dark_theme)
             fillRegion(reg, QColor(0, 0, 0, 255*data.opacity()));
@@ -565,15 +484,15 @@ LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
     vbo->render(GL_TRIANGLES);
 }
 
-QList<KWin::GLTexture> LightlyShadersEffect::getSamples(const QRect* rect)
+QList<KWin::GLTexture> LightlyShadersEffect::getTexRegions(const QRect* rect)
 {
     QList<KWin::GLTexture> sample_tex;
     const QRect s(KWin::effects->virtualScreenGeometry());
 
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < NTex; ++i)
     {
-        KWin::GLTexture sample = KWin::GLTexture(GL_RGBA8, rect[i].size());
-        sample.bind();
+        KWin::GLTexture t = KWin::GLTexture(GL_RGBA8, rect[i].size());
+        t.bind();
         glCopyTexSubImage2D(
             GL_TEXTURE_2D, 
             0, 
@@ -584,28 +503,56 @@ QList<KWin::GLTexture> LightlyShadersEffect::getSamples(const QRect* rect)
             rect[i].width(), 
             rect[i].height()
         );
-        sample.unbind();
+        t.unbind();
 
-        sample_tex.append(sample);
+        sample_tex.append(t);
     }
 
     return sample_tex;
 }
 
-QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLTexture> orig_sample_tex, QList<KWin::GLTexture> shadow_sample_tex, QList<KWin::GLTexture> orig_tex)
+QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLTexture> orig_tex, QList<KWin::GLTexture> shadow_tex)
 {
     QList<KWin::GLTexture> res;
 
-    for (int k = 0; k < 4; ++k)
+    for (int k = 0; k < NTex; ++k)
     {
+        QImage orig_tex_img = toImage(orig_tex[k]);
+        QImage shadow_tex_img = toImage(shadow_tex[k]);
 
-        QImage shadow1_img = toImage(shadow_sample_tex[k*2]);
-        QImage shadow2_img = toImage(shadow_sample_tex[k*2+1]);
+        QImage tex_img, orig1_img, orig2_img, shadow1_img, shadow2_img;
 
-        QImage orig1_img = toImage(orig_sample_tex[k*2]);
-        QImage orig2_img = toImage(orig_sample_tex[k*2+1]);
-
-        QImage tex_img = toImage(orig_tex[k]);
+        switch(k)
+        {
+            case TopLeft:
+                tex_img = orig_tex_img.copy(1,1,m_size,m_size);
+                orig1_img = orig_tex_img.copy(0,0,m_size+1,1);
+                orig2_img = orig_tex_img.copy(0,0,1,m_size+1);
+                shadow1_img = shadow_tex_img.copy(0,0,m_size+1,1);
+                shadow2_img = shadow_tex_img.copy(0,0,1,m_size+1);
+                break;
+            case TopRight:
+                tex_img = orig_tex_img.copy(0,1,m_size,m_size);
+                orig1_img = orig_tex_img.copy(0,0,m_size+1,1);
+                orig2_img = orig_tex_img.copy(m_size,0,1,m_size+1);
+                shadow1_img = shadow_tex_img.copy(0,0,m_size+1,1);
+                shadow2_img = shadow_tex_img.copy(m_size,0,1,m_size+1);
+                break;
+            case BottomRight:
+                tex_img = orig_tex_img.copy(0,0,m_size,m_size);
+                orig1_img = orig_tex_img.copy(m_size,0,1,m_size+1);
+                orig2_img = orig_tex_img.copy(0,m_size,m_size+1,1);
+                shadow1_img = shadow_tex_img.copy(m_size,0,1,m_size+1);
+                shadow2_img = shadow_tex_img.copy(0,m_size,m_size+1,1);
+                break;
+            case BottomLeft:
+                tex_img = orig_tex_img.copy(1,0,m_size,m_size);
+                orig1_img = orig_tex_img.copy(0,0,1,m_size+1);
+                orig2_img = orig_tex_img.copy(0,m_size,m_size+1,1);
+                shadow1_img = shadow_tex_img.copy(0,0,1,m_size+1);
+                shadow2_img = shadow_tex_img.copy(0,m_size,m_size+1,1);
+                break;
+        }
         
         //interpolate the shadows
         //get deltas
@@ -619,18 +566,15 @@ QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLT
         
         for (int i = 0; i < m_size; ++i)
         {
-            int d, n = i;
+            int d = i;
 
-            if(k*2 == 2) {
-                n = m_size-1-i;
-            }
             if(shadow1_img_width>1) {
-                x = n;
+                x = i;
                 y = 0;
                 d = 0; //horizontal
             } else {
                 x = 0;
-                y = n;
+                y = i;
                 d = 1; //vertical
 
                 orig1_line = reinterpret_cast<uint*>(orig1_img.scanLine(y));
@@ -643,17 +587,13 @@ QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLT
             dG[i][d] = qGreen(*orig1_pixel) - qGreen(*shadow1_pixel);
             dB[i][d] = qBlue(*orig1_pixel) - qBlue(*shadow1_pixel);
 
-            n = i;
-            if(k*2+1 == 1 || k*2+1 == 5) {
-                n = m_size-1-i;
-            }
             if(shadow2_img_width>1) {
-                x = n;
+                x = i;
                 y = 0;
                 d = 0; //horizontal
             } else {
                 x = 0;
-                y = n;
+                y = i;
                 d = 1; //vertical
 
                 orig2_line = reinterpret_cast<uint*>(orig2_img.scanLine(y));
@@ -672,29 +612,16 @@ QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLT
         for (int j = 0; j < m_size; ++j)
         {
             uint *img_line = reinterpret_cast<uint*>(img.scanLine(j));
-            const uint *tex_img_line = reinterpret_cast<const uint*>(tex_img.constScanLine(m_size-1-j));
+            const uint *tex_img_line = reinterpret_cast<const uint*>(tex_img.constScanLine(j));
             for (int i = 0; i < m_size; ++i)
             {
                 QRgb *tex_pixel = (QRgb *)(tex_img_line+i);
                 
                 int diffR, diffG, diffB;
 
-                int m = i, n = j;
-                if(k == 1) {
-                    m = m_size-1-i;
-                    n = m_size-1-j;
-                }
-                if(k == 2) {
-                    m = m_size-1-i;
-                    n = m_size-1-j;
-                }
-                if(k == 3) {
-                    n = m_size-1-j;
-                }
-
-                diffR = std::max(dR[m][0], dR[n][1]);
-                diffG = std::max(dG[m][0], dG[n][1]);
-                diffB = std::max(dB[m][0], dB[n][1]);
+                diffR = std::max(dR[i][0], dR[j][1]);
+                diffG = std::max(dG[i][0], dG[j][1]);
+                diffB = std::max(dB[i][0], dB[j][1]);
                 
                 int red = normalize(qRed(*tex_pixel)-diffR);
                 int green = normalize(qGreen(*tex_pixel)-diffG);
@@ -715,7 +642,7 @@ LightlyShadersEffect::normalize(int color_val)
 {
 
     if(color_val<0) color_val = 0;
-    if(color_val>255) color_val = 255;
+    else if(color_val>255) color_val = 255;
 
     return color_val;
 }

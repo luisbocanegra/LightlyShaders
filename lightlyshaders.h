@@ -34,17 +34,8 @@ public:
 
     static bool supported();
     static bool enabledByDefault();
-
-    void setRoundness(const int r);
-    void genMasks();
-    void genRect();
-
-    void fillRegion(const QRegion &reg, const QColor &c);
-    QList<KWin::GLTexture> getSamples(const QRect* rect);
-    QList<KWin::GLTexture> createShadowTexture(QList<KWin::GLTexture> orig_sample_tex, QList<KWin::GLTexture> shadow_sample_tex, QList<KWin::GLTexture> orig_tex);
-    int normalize(int color);
-    QImage toImage(KWin::GLTexture texture);
     
+    void setRoundness(const int r);
     void reconfigure(ReconfigureFlags flags);
     void prePaintWindow(KWin::EffectWindow* w, KWin::WindowPrePaintData& data, std::chrono::milliseconds time);
     void paintWindow(KWin::EffectWindow* w, int mask, QRegion region, KWin::WindowPaintData& data);
@@ -54,6 +45,15 @@ protected Q_SLOTS:
     void windowAdded(KWin::EffectWindow *window);
 
 private:
+    void genMasks();
+    void genRect();
+
+    void fillRegion(const QRegion &reg, const QColor &c);
+    QList<KWin::GLTexture> getTexRegions(const QRect* rect);
+    QList<KWin::GLTexture> createShadowTexture(QList<KWin::GLTexture> orig_tex, QList<KWin::GLTexture> shadow_tex);
+    int normalize(int color);
+    QImage toImage(KWin::GLTexture texture);
+
     enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
     KWin::GLTexture *m_tex[NTex];
     KWin::GLTexture *m_rect[NTex];
