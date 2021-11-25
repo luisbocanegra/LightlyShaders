@@ -250,7 +250,7 @@ void
 LightlyShadersEffect::setRoundness(const int r)
 {
     m_size = r;
-    m_corner = QSize(m_size, m_size);
+    m_corner = QSize(m_size+1, m_size+1);
     genMasks();
     genRect();
 }
@@ -285,9 +285,9 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
     const QRect rect[NTex] =
     {
         QRect(geo.topLeft(), m_corner),
-        QRect(geo.topRight()-QPoint(m_size-2, 0), m_corner),
-        QRect(geo.bottomRight()-QPoint(m_size-2, m_size-2), m_corner),
-        QRect(geo.bottomLeft()-QPoint(0, m_size-2), m_corner)
+        QRect(geo.topRight()-QPoint(m_size, 0), m_corner),
+        QRect(geo.bottomRight()-QPoint(m_size, m_size), m_corner),
+        QRect(geo.bottomLeft()-QPoint(0, m_size), m_corner)
     };
     for (int i = 0; i < NTex; ++i)
     {
@@ -330,13 +330,13 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     
     //map the corners
     const QRect geo(w->frameGeometry());
-    const QSize size(m_size+1, m_size+1);
+    const QSize size(m_size+2, m_size+2);
     const QRect big_rect[NTex] =
     {
-        QRect(geo.topLeft()-QPoint(1,1), size),
-        QRect(geo.topRight()-QPoint(m_size-1, 1), size),
+        QRect(geo.topLeft()-QPoint(2,2), size),
+        QRect(geo.topRight()-QPoint(m_size-1, 2), size),
         QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), size),
-        QRect(geo.bottomLeft()-QPoint(1, m_size-1), size)
+        QRect(geo.bottomLeft()-QPoint(2, m_size-1), size)
     };
 
     //copy the empty corner regions
@@ -353,10 +353,10 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
 
     const QRect rect[NTex] =
     {
-        QRect(geo.topLeft(), m_corner),
-        QRect(geo.topRight()-QPoint(m_size-1, 0), m_corner),
+        QRect(geo.topLeft()-QPoint(1,1), m_corner),
+        QRect(geo.topRight()-QPoint(m_size-1, 1), m_corner),
         QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), m_corner),
-        QRect(geo.bottomLeft()-QPoint(0, m_size-1), m_corner)
+        QRect(geo.bottomLeft()-QPoint(1, m_size-1), m_corner)
     };
 
     //Draw rounded corners with shadows    
@@ -383,13 +383,6 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     // outline
     if (use_outline && data.brightness() == 1.0 && data.crossFadeProgress() == 1.0)
     {
-        const QRect rrect[NTex] =
-        {
-            rect[TopLeft].adjusted(-1, -1, 0, 0),
-            rect[TopRight].adjusted(0, -1, 1, 0),
-            rect[BottomRight].adjusted(0, 0, 1, 1),
-            rect[BottomLeft].adjusted(-1, 0, 0, 1)
-        };
         const float o(data.opacity());
 
         KWin::GLShader *shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::MapTexture|KWin::ShaderTrait::UniformColor|KWin::ShaderTrait::Modulate);
@@ -401,32 +394,25 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         for (int i = 0; i < NTex; ++i)
         {
             QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
-            modelViewProjection.translate(rrect[i].x(), rrect[i].y());
+            modelViewProjection.translate(rect[i].x(), rect[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
             m_rect[i]->bind();
-            m_rect[i]->render(region, rrect[i]);
+            m_rect[i]->render(region, rect[i]);
             m_rect[i]->unbind();
         }
 
         KWin::ShaderManager::instance()->popShader();
 
         //Outer corners
-        const QRect nrect[NTex] =
-        {
-            rect[TopLeft].adjusted(-2, -2, 0, 0),
-            rect[TopRight].adjusted(0, -2, 2, 0),
-            rect[BottomRight].adjusted(0, 0, 2, 2),
-            rect[BottomLeft].adjusted(-2, 0, 0, 2)
-        };
         shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::MapTexture|KWin::ShaderTrait::UniformColor|KWin::ShaderTrait::Modulate);
         shader->setUniform(KWin::GLShader::ModulationConstant, QVector4D(o, o, o, o));
         for (int i = 0; i < NTex; ++i)
         {
             QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
-            modelViewProjection.translate(nrect[i].x(), nrect[i].y());
+            modelViewProjection.translate(big_rect[i].x(), big_rect[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
             m_dark_rect[i]->bind();
-            m_dark_rect[i]->render(region, nrect[i]);
+            m_dark_rect[i]->render(region, big_rect[i]);
             m_dark_rect[i]->unbind();
         
         }
@@ -441,7 +427,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         reg -= QRegion(geo.adjusted(1, 1, -1, -1));
         for (int i = 0; i < NTex; ++i)
-            reg -= rrect[i];
+            reg -= rect[i];
         fillRegion(reg, QColor(255, 255, 255, m_alpha*data.opacity()));
         KWin::ShaderManager::instance()->popShader();
 
@@ -452,7 +438,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         reg = QRegion(geo.adjusted(-1, -1, 1, 1));
         reg -= geo;
         for (int i = 0; i < NTex; ++i)
-            reg -= rrect[i];
+            reg -= rect[i];
         if(m_dark_theme)
             fillRegion(reg, QColor(0, 0, 0, 255*data.opacity()));
         else
@@ -525,38 +511,38 @@ QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLT
         switch(k)
         {
             case TopLeft:
-                tex_img = orig_tex_img.copy(1,1,m_size,m_size);
-                orig1_img = orig_tex_img.copy(0,0,m_size+1,1);
-                orig2_img = orig_tex_img.copy(0,0,1,m_size+1);
-                shadow1_img = shadow_tex_img.copy(0,0,m_size+1,1);
-                shadow2_img = shadow_tex_img.copy(0,0,1,m_size+1);
+                tex_img = orig_tex_img.copy(1,1,m_size+1,m_size+1);
+                orig1_img = orig_tex_img.copy(0,0,m_size+2,1);
+                orig2_img = orig_tex_img.copy(0,0,1,m_size+2);
+                shadow1_img = shadow_tex_img.copy(0,0,m_size+2,1);
+                shadow2_img = shadow_tex_img.copy(0,0,1,m_size+2);
                 break;
             case TopRight:
-                tex_img = orig_tex_img.copy(0,1,m_size,m_size);
-                orig1_img = orig_tex_img.copy(0,0,m_size+1,1);
-                orig2_img = orig_tex_img.copy(m_size,0,1,m_size+1);
-                shadow1_img = shadow_tex_img.copy(0,0,m_size+1,1);
-                shadow2_img = shadow_tex_img.copy(m_size,0,1,m_size+1);
+                tex_img = orig_tex_img.copy(0,1,m_size+1,m_size+1);
+                orig1_img = orig_tex_img.copy(0,0,m_size+2,1);
+                orig2_img = orig_tex_img.copy(m_size+1,0,1,m_size+2);
+                shadow1_img = shadow_tex_img.copy(0,0,m_size+2,1);
+                shadow2_img = shadow_tex_img.copy(m_size+1,0,1,m_size+2);
                 break;
             case BottomRight:
-                tex_img = orig_tex_img.copy(0,0,m_size,m_size);
-                orig1_img = orig_tex_img.copy(m_size,0,1,m_size+1);
-                orig2_img = orig_tex_img.copy(0,m_size,m_size+1,1);
-                shadow1_img = shadow_tex_img.copy(m_size,0,1,m_size+1);
-                shadow2_img = shadow_tex_img.copy(0,m_size,m_size+1,1);
+                tex_img = orig_tex_img.copy(0,0,m_size+1,m_size+1);
+                orig1_img = orig_tex_img.copy(m_size+1,0,1,m_size+2);
+                orig2_img = orig_tex_img.copy(0,m_size+1,m_size+2,1);
+                shadow1_img = shadow_tex_img.copy(m_size+1,0,1,m_size+2);
+                shadow2_img = shadow_tex_img.copy(0,m_size+1,m_size+2,1);
                 break;
             case BottomLeft:
-                tex_img = orig_tex_img.copy(1,0,m_size,m_size);
-                orig1_img = orig_tex_img.copy(0,0,1,m_size+1);
-                orig2_img = orig_tex_img.copy(0,m_size,m_size+1,1);
-                shadow1_img = shadow_tex_img.copy(0,0,1,m_size+1);
-                shadow2_img = shadow_tex_img.copy(0,m_size,m_size+1,1);
+                tex_img = orig_tex_img.copy(1,0,m_size+1,m_size+1);
+                orig1_img = orig_tex_img.copy(0,0,1,m_size+2);
+                orig2_img = orig_tex_img.copy(0,m_size+1,m_size+2,1);
+                shadow1_img = shadow_tex_img.copy(0,0,1,m_size+2);
+                shadow2_img = shadow_tex_img.copy(0,m_size+1,m_size+2,1);
                 break;
         }
         
         //interpolate the shadows
         //get deltas
-        int x, y, dR[m_size][2], dG[m_size][2], dB[m_size][2];
+        int x, y, d, dR[m_size+1][2], dG[m_size+1][2], dB[m_size+1][2];
         int shadow1_img_width = shadow1_img.width(), shadow2_img_width = shadow2_img.width();
         
         uint *orig1_line = reinterpret_cast<uint*>(orig1_img.bits());
@@ -564,10 +550,8 @@ QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLT
         uint *orig2_line = reinterpret_cast<uint*>(orig2_img.bits());
         uint *shadow2_line = reinterpret_cast<uint*>(shadow2_img.bits());
         
-        for (int i = 0; i < m_size; ++i)
+        for (int i = 0; i < m_size+1; ++i)
         {
-            int d = i;
-
             if(shadow1_img_width>1) {
                 x = i;
                 y = 0;
@@ -608,12 +592,12 @@ QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLT
         }
 
         //Generate texture and push it to resulting list
-        QImage img(m_size, m_size, QImage::Format_ARGB32_Premultiplied);
-        for (int j = 0; j < m_size; ++j)
+        QImage img(m_size+1, m_size+1, QImage::Format_ARGB32_Premultiplied);
+        for (int j = 0; j < m_size+1; ++j)
         {
             uint *img_line = reinterpret_cast<uint*>(img.scanLine(j));
             const uint *tex_img_line = reinterpret_cast<const uint*>(tex_img.constScanLine(j));
-            for (int i = 0; i < m_size; ++i)
+            for (int i = 0; i < m_size+1; ++i)
             {
                 QRgb *tex_pixel = (QRgb *)(tex_img_line+i);
                 
