@@ -171,7 +171,7 @@ LightlyShadersEffect::genMasks()
         if (m_tex[i])
             delete m_tex[i];
 
-    QImage img(m_size*2, m_size*2, QImage::Format_ARGB32_Premultiplied);
+    QImage img((m_size+1)*2, (m_size+1)*2, QImage::Format_ARGB32_Premultiplied);
     img.fill(Qt::transparent);
     QPainter p(&img);
     p.fillRect(img.rect(), Qt::black);
@@ -179,13 +179,13 @@ LightlyShadersEffect::genMasks()
     p.setPen(Qt::NoPen);
     p.setBrush(Qt::black);
     p.setRenderHint(QPainter::Antialiasing);
-    p.drawEllipse(img.rect());
+    p.drawEllipse(QRect(1,1, m_size*2, m_size*2));
     p.end();
 
-    m_tex[TopLeft] = new KWin::GLTexture(img.copy(0, 0, m_size, m_size));
-    m_tex[TopRight] = new KWin::GLTexture(img.copy(m_size, 0, m_size, m_size));
-    m_tex[BottomRight] = new KWin::GLTexture(img.copy(m_size, m_size, m_size, m_size));
-    m_tex[BottomLeft] = new KWin::GLTexture(img.copy(0, m_size, m_size, m_size));
+    m_tex[TopLeft] = new KWin::GLTexture(img.copy(0, 0, (m_size+1), (m_size+1)));
+    m_tex[TopRight] = new KWin::GLTexture(img.copy((m_size+1), 0, (m_size+1), (m_size+1)));
+    m_tex[BottomRight] = new KWin::GLTexture(img.copy((m_size+1), (m_size+1), (m_size+1), (m_size+1)));
+    m_tex[BottomLeft] = new KWin::GLTexture(img.copy(0, (m_size+1), (m_size+1), (m_size+1)));
 }
 
 void
