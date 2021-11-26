@@ -38,14 +38,16 @@ public:
         , outline("outline")
         , alpha("alpha")
         , darkTheme("dark_theme")
+        , disabledForMaximized("disabled_for_maximized")
         , defaultRoundness(5)
         , defaultOutline(false)
         , defaultAlpha(15)
         , defaultDarkTheme(false)
+        , defaultDisabledForMaximized(false)
     {}
     LightlyShadersConfig *q;
-    QString roundness, outline, alpha, darkTheme;
-    QVariant defaultRoundness, defaultOutline, defaultAlpha, defaultDarkTheme;
+    QString roundness, outline, alpha, darkTheme, disabledForMaximized;
+    QVariant defaultRoundness, defaultOutline, defaultAlpha, defaultDarkTheme, defaultDisabledForMaximized;
     ConfigDialog *ui;
 };
 
@@ -72,6 +74,7 @@ LightlyShadersConfig::load()
     d->ui->outline->setChecked(conf.readEntry(d->outline, d->defaultOutline).toBool());
     d->ui->alpha->setValue(conf.readEntry(d->alpha, d->defaultAlpha).toInt());
     d->ui->darkTheme->setChecked(conf.readEntry(d->darkTheme, d->defaultDarkTheme).toBool());
+    d->ui->disabledForMaximized->setChecked(conf.readEntry(d->disabledForMaximized, d->defaultDisabledForMaximized).toBool());
     emit changed(false);
 }
 
@@ -84,6 +87,7 @@ LightlyShadersConfig::save()
     conf.writeEntry(d->outline, d->ui->outline->isChecked());
     conf.writeEntry(d->alpha, d->ui->alpha->value());
     conf.writeEntry(d->darkTheme, d->ui->darkTheme->isChecked());
+    conf.writeEntry(d->disabledForMaximized, d->ui->disabledForMaximized->isChecked());
     conf.sync();
     emit changed(false);
     OrgKdeKwinEffectsInterface interface(QStringLiteral("org.kde.KWin"),
@@ -100,6 +104,7 @@ LightlyShadersConfig::defaults()
     d->ui->outline->setChecked(d->defaultOutline.toBool());
     d->ui->alpha->setValue(d->defaultAlpha.toInt());
     d->ui->darkTheme->setChecked(d->defaultDarkTheme.toBool());
+    d->ui->disabledForMaximized->setChecked(d->defaultDisabledForMaximized.toBool());
     emit changed(true);
 }
 

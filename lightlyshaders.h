@@ -37,6 +37,7 @@ public:
     
     void setRoundness(const int r);
     void reconfigure(ReconfigureFlags flags);
+    void windowMaximizedStateChanged(KWin::EffectWindow *w, bool horizontal, bool vertical);
     void prePaintWindow(KWin::EffectWindow* w, KWin::WindowPrePaintData& data, std::chrono::milliseconds time);
     void paintWindow(KWin::EffectWindow* w, int mask, QRegion region, KWin::WindowPaintData& data);
     virtual int requestedEffectChainPosition() const { return 99; }
@@ -59,9 +60,10 @@ private:
     KWin::GLTexture *m_rect[NTex];
     KWin::GLTexture *m_dark_rect[NTex];
     int m_size, m_rSize, m_alpha;
-    bool m_outline, m_dark_theme;
+    bool m_outline, m_dark_theme, m_disabled_for_maximized;
     QSize m_corner;
     QRegion m_updateRegion;
+    KWin::EffectWindow *m_applyEffect;
     KWin::GLShader *m_shader;
     QList<KWin::EffectWindow *> m_managed;
 };

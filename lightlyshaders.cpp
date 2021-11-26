@@ -102,6 +102,7 @@ LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
         //qDebug() << "shader valid: " << m_shader->isValid();
         if (m_shader->isValid())
         {
+            m_applyEffect = NULL;
             const int sampler = m_shader->uniformLocation("sampler");
             const int corner = m_shader->uniformLocation("corner");
             KWin::ShaderManager::instance()->pushShader(m_shader);
@@ -114,6 +115,7 @@ LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
                     windowAdded(win);
             connect(KWin::effects, &KWin::EffectsHandler::windowAdded, this, &LightlyShadersEffect::windowAdded);
             connect(KWin::effects, &KWin::EffectsHandler::windowClosed, this, [this](){m_managed.removeOne(dynamic_cast<KWin::EffectWindow *>(sender()));});
+            connect(KWin::effects, &KWin::EffectsHandler::windowMaximizedStateChanged, this, &LightlyShadersEffect::windowMaximizedStateChanged);
         }
         else
             qDebug() << "LightlyShaders: no valid shaders found! LightlyShaders will not work.";
@@ -162,6 +164,17 @@ LightlyShadersEffect::windowAdded(KWin::EffectWindow *w)
     if (!w->isPaintingEnabled() || (w->isDesktop()) || w->isPopupMenu())
         return;
     m_managed << w;
+}
+
+void 
+LightlyShadersEffect::windowMaximizedStateChanged(KWin::EffectWindow *w, bool horizontal, bool vertical) 
+{
+    if (!m_disabled_for_maximized) return;
+
+    if ((horizontal == true) && (vertical == true))
+        m_applyEffect = w;
+    else
+        m_applyEffect = NULL;
 }
 
 void
@@ -263,6 +276,7 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
     m_alpha = int(conf.readEntry("alpha", 15)*2.55);
     m_outline = conf.readEntry("outline", false);
     m_dark_theme = conf.readEntry("dark_theme", false);
+    m_disabled_for_maximized = conf.readEntry("disabled_for_maximized", false);
     setRoundness(conf.readEntry("roundness", 5));
 }
 
@@ -273,7 +287,8 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
             || KWin::effects->hasActiveFullScreenEffect()
-            || w->isDesktop())
+            || w->isDesktop()
+            || (w == m_applyEffect))
     {
         KWin::effects->prePaintWindow(w, data, time);
         return;
@@ -317,7 +332,8 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
             || KWin::effects->hasActiveFullScreenEffect()
             || w->isDesktop()
 //            || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))
-            || !hasShadow(w))
+            || !hasShadow(w)
+            || (w == m_applyEffect))
     {
         KWin::effects->paintWindow(w, mask, region, data);
         return;
