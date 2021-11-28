@@ -7,8 +7,25 @@
 
  Also it fixes the infamous [bug](https://bugs.kde.org/show_bug.cgi?id=395725) with blurred corners, though in a somehow hacky way. 
  
+ # Warnings:
+
+ ## 1. This effect is basically a hack!
+Due to the changes introduced in Plasma 5.23 there is no way to draw original shadows under rounded corners any more. 
+
+In order to work around that, this fork uses a hack that tries to restore the shadow in the cut out regions based on the data from the closest regions with shadows. 
+
+Because of this it may work differently with different themes, corner radiuses or shadow settings. **Your mileage may vary.**
+
+ ## 2. This effect is resource-hungry!
+Depending on your hardware, you can have significant performance hit when using this. See [issue #6](https://github.com/a-parhom/LightlyShaders/issues/6). 
+
+This is because of the approach used for restoring the shadows in the cut out regions.
+
+
  # Dependencies:
  
+Good powerful hardware (see [issue #6](https://github.com/a-parhom/LightlyShaders/issues/6)).
+
 Plasma >= 5.23.
  
 Debian based (Ubuntu, Kubuntu, KDE Neon):
