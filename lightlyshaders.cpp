@@ -243,7 +243,7 @@ LightlyShadersEffect::genRect()
     p2.setRenderHint(QPainter::Antialiasing);
     r2.adjust(1, 1, -1, -1);
     if(m_dark_theme) 
-        p2.setBrush(QColor(0, 0, 0, 255));
+        p2.setBrush(QColor(0, 0, 0, 240));
     else 
         p2.setBrush(QColor(0, 0, 0, m_alpha));
     p2.drawEllipse(r2);
@@ -404,21 +404,6 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         KWin::GLShader *shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::MapTexture|KWin::ShaderTrait::UniformColor|KWin::ShaderTrait::Modulate);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-        //Inner corners
-        shader->setUniform(KWin::GLShader::ModulationConstant, QVector4D(o, o, o, o));
-
-        for (int i = 0; i < NTex; ++i)
-        {
-            QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
-            modelViewProjection.translate(rect[i].x(), rect[i].y());
-            shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
-            m_rect[i]->bind();
-            m_rect[i]->render(region, rect[i]);
-            m_rect[i]->unbind();
-        }
-
-        KWin::ShaderManager::instance()->popShader();
-
         //Outer corners
         shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::MapTexture|KWin::ShaderTrait::UniformColor|KWin::ShaderTrait::Modulate);
         shader->setUniform(KWin::GLShader::ModulationConstant, QVector4D(o, o, o, o));
@@ -431,6 +416,20 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
             m_dark_rect[i]->render(region, big_rect[i]);
             m_dark_rect[i]->unbind();
         
+        }
+        KWin::ShaderManager::instance()->popShader();
+
+        //Inner corners
+        shader->setUniform(KWin::GLShader::ModulationConstant, QVector4D(o, o, o, o));
+
+        for (int i = 0; i < NTex; ++i)
+        {
+            QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
+            modelViewProjection.translate(rect[i].x(), rect[i].y());
+            shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
+            m_rect[i]->bind();
+            m_rect[i]->render(region, rect[i]);
+            m_rect[i]->unbind();
         }
         KWin::ShaderManager::instance()->popShader();
         
