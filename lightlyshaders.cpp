@@ -103,11 +103,15 @@ LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
         if (m_shader->isValid())
         {
             m_applyEffect = NULL;
-            const int sampler = m_shader->uniformLocation("sampler");
-            const int corner = m_shader->uniformLocation("corner");
+            const int background_sampler = m_shader->uniformLocation("background_sampler");
+            const int shadow_sampler = m_shader->uniformLocation("shadow_sampler");
+            const int radius_sampler = m_shader->uniformLocation("radius_sampler");
+            const int corner_number = m_shader->uniformLocation("corner_number");
             KWin::ShaderManager::instance()->pushShader(m_shader);
-            m_shader->setUniform(corner, 1);
-            m_shader->setUniform(sampler, 0);
+            m_shader->setUniform(corner_number, 3);
+            m_shader->setUniform(radius_sampler, 2);
+            m_shader->setUniform(shadow_sampler, 1);
+            m_shader->setUniform(background_sampler, 0);
             KWin::ShaderManager::instance()->popShader();
 
             for (int i = 0; i < KWindowSystem::windows().count(); ++i)
@@ -195,10 +199,10 @@ LightlyShadersEffect::genMasks()
     p.drawEllipse(QRect(1,1, m_size*2, m_size*2));
     p.end();
 
-    m_tex[TopLeft] = new KWin::GLTexture(img.copy(0, 0, (m_size+1), (m_size+1)));
-    m_tex[TopRight] = new KWin::GLTexture(img.copy((m_size+1), 0, (m_size+1), (m_size+1)));
-    m_tex[BottomRight] = new KWin::GLTexture(img.copy((m_size+1), (m_size+1), (m_size+1), (m_size+1)));
-    m_tex[BottomLeft] = new KWin::GLTexture(img.copy(0, (m_size+1), (m_size+1), (m_size+1)));
+    m_tex[TopLeft] = new KWin::GLTexture(img.copy(0, 0, (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
+    m_tex[TopRight] = new KWin::GLTexture(img.copy((m_size+1), 0, (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
+    m_tex[BottomRight] = new KWin::GLTexture(img.copy((m_size+1), (m_size+1), (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
+    m_tex[BottomLeft] = new KWin::GLTexture(img.copy(0, (m_size+1), (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
 }
 
 void
@@ -365,7 +369,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     QList<KWin::GLTexture> shadow_corners_tex = getTexRegions(big_rect);
 
     //generate shadow texture
-    QList<KWin::GLTexture> shadow_tex = createShadowTexture(empty_corners_tex, shadow_corners_tex);
+    //QList<KWin::GLTexture> shadow_tex = createShadowTexture(empty_corners_tex, shadow_corners_tex);
 
     const QRect rect[NTex] =
     {
@@ -378,6 +382,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     //Draw rounded corners with shadows    
     glEnable(GL_BLEND);
     const int mvpMatrixLocation = m_shader->uniformLocation("modelViewProjectionMatrix");
+    const int cornerNumberLocation = m_shader->uniformLocation("corner_number");
     KWin::ShaderManager *sm = KWin::ShaderManager::instance();
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     sm->pushShader(m_shader);
@@ -386,12 +391,16 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         QMatrix4x4 mvp = data.screenProjectionMatrix();
         mvp.translate(rect[i].x(), rect[i].y());
         m_shader->setUniform(mvpMatrixLocation, mvp);
-        glActiveTexture(GL_TEXTURE1);
+        m_shader->setUniform(cornerNumberLocation, i);
+        glActiveTexture(GL_TEXTURE2);
         m_tex[i]->bind();
+        glActiveTexture(GL_TEXTURE1);
+        shadow_corners_tex[i].bind();
         glActiveTexture(GL_TEXTURE0);
-        shadow_tex[i].bind();
-        shadow_tex[i].render(region, rect[i]);
-        shadow_tex[i].unbind();
+        empty_corners_tex[i].bind();
+        empty_corners_tex[i].render(region, rect[i]);
+        empty_corners_tex[i].unbind();
+        shadow_corners_tex[i].unbind();
         m_tex[i]->unbind();
     }
     sm->popShader();
@@ -492,10 +501,11 @@ QList<KWin::GLTexture> LightlyShadersEffect::getTexRegions(const QRect* rect)
 
     for (int i = 0; i < NTex; ++i)
     {
-        KWin::GLTexture t = KWin::GLTexture(GL_RGBA8, rect[i].size());
+        QImage img(rect[i].width(), rect[i].height(), QImage::Format_ARGB32_Premultiplied);
+        KWin::GLTexture t = KWin::GLTexture(img, GL_TEXTURE_RECTANGLE);
         t.bind();
         glCopyTexSubImage2D(
-            GL_TEXTURE_2D, 
+            GL_TEXTURE_RECTANGLE, 
             0, 
             0, 
             0, 
@@ -510,153 +520,6 @@ QList<KWin::GLTexture> LightlyShadersEffect::getTexRegions(const QRect* rect)
     }
 
     return sample_tex;
-}
-
-QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLTexture> orig_tex, QList<KWin::GLTexture> shadow_tex)
-{
-    QList<KWin::GLTexture> res;
-
-    for (int k = 0; k < NTex; ++k)
-    {
-        QImage orig_tex_img = toImage(orig_tex[k]);
-        QImage shadow_tex_img = toImage(shadow_tex[k]);
-
-        QImage tex_img, orig1_img, orig2_img, shadow1_img, shadow2_img;
-
-        switch(k)
-        {
-            case TopLeft:
-                tex_img = orig_tex_img.copy(1,1,m_size+1,m_size+1);
-                orig1_img = orig_tex_img.copy(0,0,m_size+2,1);
-                orig2_img = orig_tex_img.copy(0,0,1,m_size+2);
-                shadow1_img = shadow_tex_img.copy(0,0,m_size+2,1);
-                shadow2_img = shadow_tex_img.copy(0,0,1,m_size+2);
-                break;
-            case TopRight:
-                tex_img = orig_tex_img.copy(0,1,m_size+1,m_size+1);
-                orig1_img = orig_tex_img.copy(0,0,m_size+2,1);
-                orig2_img = orig_tex_img.copy(m_size+1,0,1,m_size+2);
-                shadow1_img = shadow_tex_img.copy(0,0,m_size+2,1);
-                shadow2_img = shadow_tex_img.copy(m_size+1,0,1,m_size+2);
-                break;
-            case BottomRight:
-                tex_img = orig_tex_img.copy(0,0,m_size+1,m_size+1);
-                orig1_img = orig_tex_img.copy(m_size+1,0,1,m_size+2);
-                orig2_img = orig_tex_img.copy(0,m_size+1,m_size+2,1);
-                shadow1_img = shadow_tex_img.copy(m_size+1,0,1,m_size+2);
-                shadow2_img = shadow_tex_img.copy(0,m_size+1,m_size+2,1);
-                break;
-            case BottomLeft:
-                tex_img = orig_tex_img.copy(1,0,m_size+1,m_size+1);
-                orig1_img = orig_tex_img.copy(0,0,1,m_size+2);
-                orig2_img = orig_tex_img.copy(0,m_size+1,m_size+2,1);
-                shadow1_img = shadow_tex_img.copy(0,0,1,m_size+2);
-                shadow2_img = shadow_tex_img.copy(0,m_size+1,m_size+2,1);
-                break;
-        }
-        
-        //interpolate the shadows
-        //get deltas
-        int x, y, d, dR[m_size+1][2], dG[m_size+1][2], dB[m_size+1][2];
-        int shadow1_img_width = shadow1_img.width(), shadow2_img_width = shadow2_img.width();
-        
-        uint *orig1_line = reinterpret_cast<uint*>(orig1_img.bits());
-        uint *shadow1_line = reinterpret_cast<uint*>(shadow1_img.bits());
-        uint *orig2_line = reinterpret_cast<uint*>(orig2_img.bits());
-        uint *shadow2_line = reinterpret_cast<uint*>(shadow2_img.bits());
-        
-        for (int i = 0; i < m_size+1; ++i)
-        {
-            if(shadow1_img_width>1) {
-                x = i;
-                y = 0;
-                d = 0; //horizontal
-            } else {
-                x = 0;
-                y = i;
-                d = 1; //vertical
-
-                orig1_line = reinterpret_cast<uint*>(orig1_img.scanLine(y));
-                shadow1_line = reinterpret_cast<uint*>(shadow1_img.scanLine(y));
-            }
- 
-            QRgb *orig1_pixel = (QRgb*)(orig1_line+x);
-            QRgb *shadow1_pixel = (QRgb*)(shadow1_line+x);
-            dR[i][d] = qRed(*orig1_pixel) - qRed(*shadow1_pixel);
-            dG[i][d] = qGreen(*orig1_pixel) - qGreen(*shadow1_pixel);
-            dB[i][d] = qBlue(*orig1_pixel) - qBlue(*shadow1_pixel);
-
-            if(shadow2_img_width>1) {
-                x = i;
-                y = 0;
-                d = 0; //horizontal
-            } else {
-                x = 0;
-                y = i;
-                d = 1; //vertical
-
-                orig2_line = reinterpret_cast<uint*>(orig2_img.scanLine(y));
-                shadow2_line = reinterpret_cast<uint*>(shadow2_img.scanLine(y));
-            }
-            
-            QRgb* orig2_pixel = (QRgb*)(orig2_line+x);
-            QRgb* shadow2_pixel = (QRgb*)(shadow2_line+x);
-            dR[i][d] = qRed(*orig2_pixel) - qRed(*shadow2_pixel);
-            dG[i][d] = qGreen(*orig2_pixel) - qGreen(*shadow2_pixel);
-            dB[i][d] = qBlue(*orig2_pixel) - qBlue(*shadow2_pixel);
-        }
-
-        //Generate texture and push it to resulting list
-        QImage img(m_size+1, m_size+1, QImage::Format_ARGB32_Premultiplied);
-        for (int j = 0; j < m_size+1; ++j)
-        {
-            uint *img_line = reinterpret_cast<uint*>(img.scanLine(j));
-            const uint *tex_img_line = reinterpret_cast<const uint*>(tex_img.constScanLine(j));
-            for (int i = 0; i < m_size+1; ++i)
-            {
-                QRgb *tex_pixel = (QRgb *)(tex_img_line+i);
-                
-                int diffR, diffG, diffB;
-
-                diffR = std::max(dR[i][0], dR[j][1]);
-                diffG = std::max(dG[i][0], dG[j][1]);
-                diffB = std::max(dB[i][0], dB[j][1]);
-                
-                int red = normalize(qRed(*tex_pixel)-diffR);
-                int green = normalize(qGreen(*tex_pixel)-diffG);
-                int blue = normalize(qBlue(*tex_pixel)-diffB);
-                
-                *(img_line+i) = qRgb(red, green, blue);
-            }
-        }
-        KWin::GLTexture t(img);        
-        res.append(t);
-    }
-
-    return res;
-}
-
-int
-LightlyShadersEffect::normalize(int color_val)
-{
-
-    if(color_val<0) color_val = 0;
-    else if(color_val>255) color_val = 255;
-
-    return color_val;
-}
-
-QImage
-LightlyShadersEffect::toImage(KWin::GLTexture texture)
-{
-    int width = texture.width(), height = texture.height();
-    QImage img(width, height, QImage::Format_ARGB32_Premultiplied);
-    texture.bind();
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                  static_cast<GLvoid *>(img.bits()));
-    texture.unbind();
-    convertFromGLImage(img, width, height);
-    return img;
 }
 
 bool
