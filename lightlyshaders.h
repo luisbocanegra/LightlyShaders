@@ -50,10 +50,9 @@ private:
     void genRect();
 
     void fillRegion(const QRegion &reg, const QColor &c);
-    QList<KWin::GLTexture> getTexRegions(const QRect* rect);
-    QList<KWin::GLTexture> createShadowTexture(QList<KWin::GLTexture> orig_tex, QList<KWin::GLTexture> shadow_tex);
+    QList<QImage> getTexRegions(const QRect* rect);
+    QList<KWin::GLTexture> createShadowTexture(QList<QImage> orig_imgs, QList<QImage> shadow_imgs);
     int normalize(int color);
-    QImage toImage(KWin::GLTexture texture);
 
     enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
     KWin::GLTexture *m_tex[NTex];

@@ -356,16 +356,16 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     };
 
     //copy the empty corner regions
-    QList<KWin::GLTexture> empty_corners_tex = getTexRegions(big_rect);
+    QList<QImage> empty_corners_imgs = getTexRegions(big_rect);
     
     //paint the actual window
     KWin::effects->paintWindow(w, mask, region, data);
 
     //get samples with shadow
-    QList<KWin::GLTexture> shadow_corners_tex = getTexRegions(big_rect);
+    QList<QImage> shadow_corners_imgs = getTexRegions(big_rect);
 
     //generate shadow texture
-    QList<KWin::GLTexture> shadow_tex = createShadowTexture(empty_corners_tex, shadow_corners_tex);
+    QList<KWin::GLTexture> shadow_tex = createShadowTexture(empty_corners_imgs, shadow_corners_imgs);
 
     const QRect rect[NTex] =
     {
@@ -486,41 +486,47 @@ LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
     vbo->render(GL_TRIANGLES);
 }
 
-QList<KWin::GLTexture> LightlyShadersEffect::getTexRegions(const QRect* rect)
+QList<QImage> LightlyShadersEffect::getTexRegions(const QRect* rect)
 {
-    QList<KWin::GLTexture> sample_tex;
+    QList<QImage> sample_images;
     const QRect s(KWin::effects->virtualScreenGeometry());
+
+    bool blit_supported = KWin::GLRenderTarget::blitSupported() && !KWin::GLPlatform::instance()->isGLES();
 
     for (int i = 0; i < NTex; ++i)
     {
-        KWin::GLTexture t = KWin::GLTexture(GL_RGBA8, rect[i].size());
-        t.bind();
-        glCopyTexSubImage2D(
-            GL_TEXTURE_2D, 
-            0, 
-            0, 
-            0, 
-            rect[i].x(), 
-            s.height() - rect[i].y() - rect[i].height(), 
-            rect[i].width(), 
-            rect[i].height()
-        );
-        t.unbind();
+        QImage image;
 
-        sample_tex.append(t);
+        if (blit_supported) {
+            image = QImage(rect[i].width(), rect[i].height(), QImage::Format_ARGB32);
+            KWin::GLTexture texture(GL_RGBA8, rect[i].width(), rect[i].height());
+            KWin::GLRenderTarget target(texture);
+            target.blitFromFramebuffer(rect[i]);
+            // copy content from framebuffer into image
+            texture.bind();
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                          static_cast<GLvoid *>(image.bits()));
+            texture.unbind();
+        } else {
+            image = QImage(rect[i].width(), rect[i].height(), QImage::Format_ARGB32);
+            glReadPixels(rect[i].x(), s.height() - rect[i].y() - rect[i].height(), rect[i].width(), rect[i].height(), GL_RGBA,
+                         GL_UNSIGNED_BYTE, static_cast<GLvoid *>(image.bits()));
+        }
+        convertFromGLImage(image, rect[i].width(), rect[i].height());
+        sample_images.append(image);
     }
 
-    return sample_tex;
+    return sample_images;
 }
 
-QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<KWin::GLTexture> orig_tex, QList<KWin::GLTexture> shadow_tex)
+QList<KWin::GLTexture> LightlyShadersEffect::createShadowTexture(QList<QImage> orig_imgs, QList<QImage> shadow_imgs)
 {
     QList<KWin::GLTexture> res;
 
     for (int k = 0; k < NTex; ++k)
     {
-        QImage orig_tex_img = toImage(orig_tex[k]);
-        QImage shadow_tex_img = toImage(shadow_tex[k]);
+        QImage orig_tex_img = orig_imgs[k];
+        QImage shadow_tex_img = shadow_imgs[k];
 
         QImage tex_img, orig1_img, orig2_img, shadow1_img, shadow2_img;
 
@@ -645,19 +651,6 @@ LightlyShadersEffect::normalize(int color_val)
     else if(color_val>255) color_val = 255;
 
     return color_val;
-}
-
-QImage
-LightlyShadersEffect::toImage(KWin::GLTexture texture)
-{
-    int width = texture.width(), height = texture.height();
-    QImage img(width, height, QImage::Format_ARGB32_Premultiplied);
-    texture.bind();
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                  static_cast<GLvoid *>(img.bits()));
-    texture.unbind();
-    convertFromGLImage(img, width, height);
-    return img;
 }
 
 bool
