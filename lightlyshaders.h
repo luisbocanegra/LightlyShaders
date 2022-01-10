@@ -50,7 +50,7 @@ private:
     void genRect();
 
     void fillRegion(const QRegion &reg, const QColor &c);
-    QList<KWin::GLTexture> getTexRegions(const QRect* rect);
+    QList<KWin::GLTexture> getTexRegions(KWin::EffectWindow *w, const QRect* rect);
 
     enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
     KWin::GLTexture *m_tex[NTex];
@@ -59,7 +59,7 @@ private:
     int m_size, m_rSize, m_alpha;
     bool m_outline, m_dark_theme, m_disabled_for_maximized;
     QSize m_corner;
-    QRegion m_updateRegion;
+    QMap<KWin::EffectWindow *, QRegion> m_clip;
     KWin::EffectWindow *m_applyEffect;
     KWin::GLShader *m_shader;
     QList<KWin::EffectWindow *> m_managed;

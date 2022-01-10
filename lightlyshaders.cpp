@@ -111,6 +111,7 @@ LightlyShadersEffect::~LightlyShadersEffect()
         if (m_dark_rect[i])
             delete m_dark_rect[i];
     }
+    m_clip.clear();
 }
 
 void
@@ -256,6 +257,7 @@ void
 LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaintData &data, std::chrono::milliseconds time)
 {
     if (!m_shader->isValid()
+            || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
             || KWin::effects->hasActiveFullScreenEffect()
@@ -265,26 +267,36 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
         KWin::effects->prePaintWindow(w, data, time);
         return;
     }
-    
-    //QRegion outerRect(w->expandedGeometry());
 
     const QRect geo(w->geometry());
     const QRect rect[NTex] =
     {
-        QRect(geo.topLeft(), m_corner),
-        QRect(geo.topRight()-QPoint(m_size, 0), m_corner),
-        QRect(geo.bottomRight()-QPoint(m_size, m_size), m_corner),
-        QRect(geo.bottomLeft()-QPoint(0, m_size), m_corner)
+        QRect(geo.topLeft()-QPoint(1,1), m_corner),
+        QRect(geo.topRight()-QPoint(m_size-1, 1), m_corner),
+        QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), m_corner),
+        QRect(geo.bottomLeft()-QPoint(1, m_size-1), m_corner)
     };
+    QRegion repaintRegion(QRegion(geo.adjusted(-2, -2, 2, 2))-geo.adjusted(2, 2, -2, -2));
+
     for (int i = 0; i < NTex; ++i)
     {
-        data.paint += rect[i];
-        data.clip -= rect[i];
+        repaintRegion += rect[i];
     }
-    QRegion outerRect(QRegion(geo.adjusted(-2, -2, 2, 2))-geo.adjusted(2, 2, -2, -2));
 
-    data.paint += outerRect;
-    data.clip -=outerRect;
+    data.clip -= repaintRegion;
+    data.paint += repaintRegion;
+
+    m_clip[w] = QRegion();
+
+    const auto stackingOrder = KWin::effects->stackingOrder();
+    bool bottom_w = true;
+    for (KWin::EffectWindow *window : stackingOrder) {
+        if(bottom_w && window != w) continue;
+        bottom_w = false;
+        if(!bottom_w && window != w)
+            m_clip[w] += window->geometry().adjusted(2, 2, -2, -2);
+    }
+
     KWin::effects->prePaintWindow(w, data, time);
 }
 
@@ -299,6 +311,7 @@ void
 LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion region, KWin::WindowPaintData &data)
 {
     if (!m_shader->isValid()
+            || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
             || KWin::effects->hasActiveFullScreenEffect()
@@ -328,16 +341,13 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     };
 
     //copy the empty corner regions
-    QList<KWin::GLTexture> empty_corners_tex = getTexRegions(big_rect);
+    QList<KWin::GLTexture> empty_corners_tex = getTexRegions(w, big_rect);
     
     //paint the actual window
     KWin::effects->paintWindow(w, mask, region, data);
 
     //get samples with shadow
-    QList<KWin::GLTexture> shadow_corners_tex = getTexRegions(big_rect);
-
-    //generate shadow texture
-    //QList<KWin::GLTexture> shadow_tex = createShadowTexture(empty_corners_tex, shadow_corners_tex);
+    QList<KWin::GLTexture> shadow_corners_tex = getTexRegions(w, big_rect);
 
     const QRect rect[NTex] =
     {
@@ -357,6 +367,9 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     sm->pushShader(m_shader);
     for (int i = 0; i < NTex; ++i)
     {
+        if(m_clip[w].contains(rect[i])) {
+            continue;
+        }
         QMatrix4x4 mvp = data.screenProjectionMatrix();
         QVector2D samplerSize = QVector2D(rect[i].width(), rect[i].height());
         mvp.translate(rect[i].x(), rect[i].y());
@@ -389,6 +402,9 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         shader->setUniform(KWin::GLShader::ModulationConstant, QVector4D(o, o, o, o));
         for (int i = 0; i < NTex; ++i)
         {
+            if(m_clip[w].contains(big_rect[i])) {
+                continue;
+            }
             QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
             modelViewProjection.translate(big_rect[i].x(), big_rect[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
@@ -404,6 +420,9 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
 
         for (int i = 0; i < NTex; ++i)
         {
+            if(m_clip[w].contains(rect[i])) {
+                continue;
+            }
             QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
             modelViewProjection.translate(rect[i].x(), rect[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
@@ -421,6 +440,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         shader->setUniform("modelViewProjectionMatrix", mvp);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         reg -= QRegion(geo.adjusted(1, 1, -1, -1));
+        reg -= m_clip[w];
         for (int i = 0; i < NTex; ++i)
             reg -= rect[i];
         fillRegion(reg, QColor(255, 255, 255, m_alpha*data.opacity()));
@@ -432,6 +452,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         reg = QRegion(geo.adjusted(-1, -1, 1, 1));
         reg -= geo;
+        reg -= m_clip[w];
         for (int i = 0; i < NTex; ++i)
             reg -= rect[i];
         if(m_dark_theme)
@@ -465,13 +486,17 @@ LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
     vbo->render(GL_TRIANGLES);
 }
 
-QList<KWin::GLTexture> LightlyShadersEffect::getTexRegions(const QRect* rect)
+QList<KWin::GLTexture> LightlyShadersEffect::getTexRegions(KWin::EffectWindow *w, const QRect* rect)
 {
     QList<KWin::GLTexture> sample_tex;
     const QRect s(KWin::effects->virtualScreenGeometry());
 
     for (int i = 0; i < NTex; ++i)
     {
+        if(m_clip[w].contains(rect[i])) {
+            sample_tex.append(KWin::GLTexture(GL_TEXTURE_RECTANGLE));
+            continue;
+        }
         QImage img(rect[i].width(), rect[i].height(), QImage::Format_ARGB32_Premultiplied);
         KWin::GLTexture t = KWin::GLTexture(img, GL_TEXTURE_RECTANGLE);
         t.bind();
