@@ -283,9 +283,6 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
         repaintRegion += rect[i];
     }
 
-    data.clip -= repaintRegion;
-    data.paint += repaintRegion;
-
     m_clip[w] = QRegion();
 
     const auto stackingOrder = KWin::effects->stackingOrder();
@@ -294,8 +291,12 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
         if(bottom_w && window != w) continue;
         bottom_w = false;
         if(!bottom_w && window != w)
-            m_clip[w] += window->geometry().adjusted(2, 2, -2, -2);
+            m_clip[w] += window->geometry().adjusted(m_size, m_size, -m_size, -m_size);
     }
+
+    repaintRegion -= m_clip[w];
+    data.clip -= repaintRegion;
+    data.paint += repaintRegion;
 
     KWin::effects->prePaintWindow(w, data, time);
 }
@@ -370,6 +371,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         if(m_clip[w].contains(rect[i])) {
             continue;
         }
+
         QMatrix4x4 mvp = data.screenProjectionMatrix();
         QVector2D samplerSize = QVector2D(rect[i].width(), rect[i].height());
         mvp.translate(rect[i].x(), rect[i].y());
@@ -405,6 +407,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
             if(m_clip[w].contains(big_rect[i])) {
                 continue;
             }
+
             QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
             modelViewProjection.translate(big_rect[i].x(), big_rect[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
@@ -423,6 +426,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
             if(m_clip[w].contains(rect[i])) {
                 continue;
             }
+
             QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
             modelViewProjection.translate(rect[i].x(), rect[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
@@ -497,6 +501,7 @@ QList<KWin::GLTexture> LightlyShadersEffect::getTexRegions(KWin::EffectWindow *w
             sample_tex.append(KWin::GLTexture(GL_TEXTURE_RECTANGLE));
             continue;
         }
+
         QImage img(rect[i].width(), rect[i].height(), QImage::Format_ARGB32_Premultiplied);
         KWin::GLTexture t = KWin::GLTexture(img, GL_TEXTURE_RECTANGLE);
         t.bind();
