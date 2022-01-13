@@ -30,15 +30,17 @@
 #include <KConfigGroup>
 #include <QtDBus/QDBusConnection>
 
+namespace KWin {
+
 KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(  LightlyShadersFactory,
                                         LightlyShadersEffect,
                                         "lightlyshaders.json",
                                         return LightlyShadersEffect::supported();,
                                         return LightlyShadersEffect::enabledByDefault();)
 
-LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
+LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
 {
-    new KWin::EffectAdaptor(this);
+    new EffectAdaptor(this);
     QDBusConnection::sessionBus().registerObject("/LightlyShaders", this);
     for (int i = 0; i < NTex; ++i)
     {
@@ -49,8 +51,8 @@ LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
     reconfigure(ReconfigureAll);
 
     QString shadersDir(QStringLiteral("kwin/shaders/1.10/"));
-    const qint64 version = KWin::kVersionNumber(1, 40);
-    if (KWin::GLPlatform::instance()->glslVersion() >= version)
+    const qint64 version = kVersionNumber(1, 40);
+    if (GLPlatform::instance()->glslVersion() >= version)
         shadersDir = QStringLiteral("kwin/shaders/1.40/");
 
     const QString shader = QStandardPaths::locate(QStandardPaths::GenericDataLocation, shadersDir + QStringLiteral("lightlyshaders.frag"));
@@ -59,7 +61,7 @@ LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
     if (file.open(QFile::ReadOnly))
     {
         QByteArray frag = file.readAll();
-        m_shader = KWin::ShaderManager::instance()->generateCustomShader(KWin::ShaderTrait::MapTexture, QByteArray(), frag);
+        m_shader = ShaderManager::instance()->generateCustomShader(ShaderTrait::MapTexture, QByteArray(), frag);
         file.close();
         //qDebug() << frag;
         //qDebug() << "shader valid: " << m_shader->isValid();
@@ -71,22 +73,22 @@ LightlyShadersEffect::LightlyShadersEffect() : KWin::Effect(), m_shader(0)
             const int radius_sampler = m_shader->uniformLocation("radius_sampler");
             const int corner_number = m_shader->uniformLocation("corner_number");
             const int sampler_size = m_shader->uniformLocation("sampler_size");
-            KWin::ShaderManager::instance()->pushShader(m_shader);
+            ShaderManager::instance()->pushShader(m_shader);
             m_shader->setUniform(sampler_size, 4);
             m_shader->setUniform(corner_number, 3);
             m_shader->setUniform(radius_sampler, 2);
             m_shader->setUniform(shadow_sampler, 1);
             m_shader->setUniform(background_sampler, 0);
-            KWin::ShaderManager::instance()->popShader();
+            ShaderManager::instance()->popShader();
 
-            const auto stackingOrder = KWin::effects->stackingOrder();
-            for (KWin::EffectWindow *window : stackingOrder) {
+            const auto stackingOrder = effects->stackingOrder();
+            for (EffectWindow *window : stackingOrder) {
                 windowAdded(window);
             }
 
-            connect(KWin::effects, &KWin::EffectsHandler::windowAdded, this, &LightlyShadersEffect::windowAdded);
-            connect(KWin::effects, &KWin::EffectsHandler::windowClosed, this, [this](){m_managed.removeOne(dynamic_cast<KWin::EffectWindow *>(sender()));});
-            connect(KWin::effects, &KWin::EffectsHandler::windowMaximizedStateChanged, this, &LightlyShadersEffect::windowMaximizedStateChanged);
+            connect(effects, &EffectsHandler::windowAdded, this, &LightlyShadersEffect::windowAdded);
+            connect(effects, &EffectsHandler::windowClosed, this, &LightlyShadersEffect::windowClosed);
+            connect(effects, &EffectsHandler::windowMaximizedStateChanged, this, &LightlyShadersEffect::windowMaximizedStateChanged);
         }
         else
             qDebug() << "LightlyShaders: no valid shaders found! LightlyShaders will not work.";
@@ -115,7 +117,14 @@ LightlyShadersEffect::~LightlyShadersEffect()
 }
 
 void
-LightlyShadersEffect::windowAdded(KWin::EffectWindow *w)
+LightlyShadersEffect::windowClosed(EffectWindow *w)
+{
+    m_managed.removeOne(w);
+    m_clip.remove(w);
+}
+
+void
+LightlyShadersEffect::windowAdded(EffectWindow *w)
 {
     if (m_managed.contains(w)
             || w->windowType() == NET::OnScreenDisplay
@@ -140,7 +149,7 @@ LightlyShadersEffect::windowAdded(KWin::EffectWindow *w)
 }
 
 void 
-LightlyShadersEffect::windowMaximizedStateChanged(KWin::EffectWindow *w, bool horizontal, bool vertical) 
+LightlyShadersEffect::windowMaximizedStateChanged(EffectWindow *w, bool horizontal, bool vertical) 
 {
     if (!m_disabled_for_maximized) return;
 
@@ -168,10 +177,10 @@ LightlyShadersEffect::genMasks()
     p.drawEllipse(QRect(1,1, m_size*2, m_size*2));
     p.end();
 
-    m_tex[TopLeft] = new KWin::GLTexture(img.copy(0, 0, (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
-    m_tex[TopRight] = new KWin::GLTexture(img.copy((m_size+1), 0, (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
-    m_tex[BottomRight] = new KWin::GLTexture(img.copy((m_size+1), (m_size+1), (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
-    m_tex[BottomLeft] = new KWin::GLTexture(img.copy(0, (m_size+1), (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
+    m_tex[TopLeft] = new GLTexture(img.copy(0, 0, (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
+    m_tex[TopRight] = new GLTexture(img.copy((m_size+1), 0, (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
+    m_tex[BottomRight] = new GLTexture(img.copy((m_size+1), (m_size+1), (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
+    m_tex[BottomLeft] = new GLTexture(img.copy(0, (m_size+1), (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
 }
 
 void
@@ -201,10 +210,10 @@ LightlyShadersEffect::genRect()
     p.drawEllipse(r);
     p.end();
 
-    m_rect[TopLeft] = new KWin::GLTexture(img.copy(0, 0, m_rSize, m_rSize));
-    m_rect[TopRight] = new KWin::GLTexture(img.copy(m_rSize, 0, m_rSize, m_rSize));
-    m_rect[BottomRight] = new KWin::GLTexture(img.copy(m_rSize, m_rSize, m_rSize, m_rSize));
-    m_rect[BottomLeft] = new KWin::GLTexture(img.copy(0, m_rSize, m_rSize, m_rSize));
+    m_rect[TopLeft] = new GLTexture(img.copy(0, 0, m_rSize, m_rSize));
+    m_rect[TopRight] = new GLTexture(img.copy(m_rSize, 0, m_rSize, m_rSize));
+    m_rect[BottomRight] = new GLTexture(img.copy(m_rSize, m_rSize, m_rSize, m_rSize));
+    m_rect[BottomLeft] = new GLTexture(img.copy(0, m_rSize, m_rSize, m_rSize));
 
     m_rSize = m_size+2;
 
@@ -226,10 +235,10 @@ LightlyShadersEffect::genRect()
     p2.drawEllipse(r2);
     p2.end();
 
-    m_dark_rect[TopLeft] = new KWin::GLTexture(img2.copy(0, 0, m_rSize, m_rSize));
-    m_dark_rect[TopRight] = new KWin::GLTexture(img2.copy(m_rSize, 0, m_rSize, m_rSize));
-    m_dark_rect[BottomRight] = new KWin::GLTexture(img2.copy(m_rSize, m_rSize, m_rSize, m_rSize));
-    m_dark_rect[BottomLeft] = new KWin::GLTexture(img2.copy(0, m_rSize, m_rSize, m_rSize));
+    m_dark_rect[TopLeft] = new GLTexture(img2.copy(0, 0, m_rSize, m_rSize));
+    m_dark_rect[TopRight] = new GLTexture(img2.copy(m_rSize, 0, m_rSize, m_rSize));
+    m_dark_rect[BottomRight] = new GLTexture(img2.copy(m_rSize, m_rSize, m_rSize, m_rSize));
+    m_dark_rect[BottomLeft] = new GLTexture(img2.copy(0, m_rSize, m_rSize, m_rSize));
 }
 
 void
@@ -254,17 +263,17 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
 }
 
 void
-LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaintData &data, std::chrono::milliseconds time)
+LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, std::chrono::milliseconds time)
 {
     if (!m_shader->isValid()
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
-            || KWin::effects->hasActiveFullScreenEffect()
+            || effects->hasActiveFullScreenEffect()
             || w->isDesktop()
             || (w == m_applyEffect))
     {
-        KWin::effects->prePaintWindow(w, data, time);
+        effects->prePaintWindow(w, data, time);
         return;
     }
 
@@ -285,9 +294,10 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
 
     m_clip[w] = QRegion();
 
-    const auto stackingOrder = KWin::effects->stackingOrder();
+    const auto stackingOrder = effects->stackingOrder();
     bool bottom_w = true;
-    for (KWin::EffectWindow *window : stackingOrder) {
+    for (EffectWindow *window : stackingOrder) {
+        if(!window->isOnCurrentDesktop()) continue;
         if(bottom_w && window != w) continue;
         bottom_w = false;
         if(!bottom_w && window != w)
@@ -298,10 +308,10 @@ LightlyShadersEffect::prePaintWindow(KWin::EffectWindow *w, KWin::WindowPrePaint
     data.clip -= repaintRegion;
     data.paint += repaintRegion;
 
-    KWin::effects->prePaintWindow(w, data, time);
+    effects->prePaintWindow(w, data, time);
 }
 
-static bool hasShadow(KWin::EffectWindow *w)
+static bool hasShadow(EffectWindow *w)
 {
     if(w->expandedGeometry().size() != w->frameGeometry().size())
         return true;
@@ -309,19 +319,19 @@ static bool hasShadow(KWin::EffectWindow *w)
 }
 
 void
-LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion region, KWin::WindowPaintData &data)
+LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, WindowPaintData &data)
 {
     if (!m_shader->isValid()
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
-            || KWin::effects->hasActiveFullScreenEffect()
+            || effects->hasActiveFullScreenEffect()
             || w->isDesktop()
 //            || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))
             || !hasShadow(w)
             || (w == m_applyEffect))
     {
-        KWin::effects->paintWindow(w, mask, region, data);
+        effects->paintWindow(w, mask, region, data);
         return;
     }
 
@@ -342,13 +352,13 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     };
 
     //copy the empty corner regions
-    QList<KWin::GLTexture> empty_corners_tex = getTexRegions(w, big_rect);
+    QList<GLTexture> empty_corners_tex = getTexRegions(w, big_rect);
     
     //paint the actual window
-    KWin::effects->paintWindow(w, mask, region, data);
+    effects->paintWindow(w, mask, region, data);
 
     //get samples with shadow
-    QList<KWin::GLTexture> shadow_corners_tex = getTexRegions(w, big_rect);
+    QList<GLTexture> shadow_corners_tex = getTexRegions(w, big_rect);
 
     const QRect rect[NTex] =
     {
@@ -363,7 +373,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     const int mvpMatrixLocation = m_shader->uniformLocation("modelViewProjectionMatrix");
     const int cornerNumberLocation = m_shader->uniformLocation("corner_number");
     const int samplerSizeLocation = m_shader->uniformLocation("sampler_size");
-    KWin::ShaderManager *sm = KWin::ShaderManager::instance();
+    ShaderManager *sm = ShaderManager::instance();
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     sm->pushShader(m_shader);
     for (int i = 0; i < NTex; ++i)
@@ -396,12 +406,11 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
     {
         const float o(data.opacity());
 
-        KWin::GLShader *shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::MapTexture|KWin::ShaderTrait::UniformColor|KWin::ShaderTrait::Modulate);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
         //Outer corners
-        shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::MapTexture|KWin::ShaderTrait::UniformColor|KWin::ShaderTrait::Modulate);
-        shader->setUniform(KWin::GLShader::ModulationConstant, QVector4D(o, o, o, o));
+        GLShader *shader = ShaderManager::instance()->pushShader(ShaderTrait::MapTexture|ShaderTrait::UniformColor|ShaderTrait::Modulate);
+        shader->setUniform(GLShader::ModulationConstant, QVector4D(o, o, o, o));
         for (int i = 0; i < NTex; ++i)
         {
             if(m_clip[w].contains(big_rect[i])) {
@@ -416,10 +425,11 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
             m_dark_rect[i]->unbind();
         
         }
-        KWin::ShaderManager::instance()->popShader();
+        ShaderManager::instance()->popShader();
 
         //Inner corners
-        shader->setUniform(KWin::GLShader::ModulationConstant, QVector4D(o, o, o, o));
+        shader = ShaderManager::instance()->pushShader(ShaderTrait::MapTexture|ShaderTrait::UniformColor|ShaderTrait::Modulate);
+        shader->setUniform(GLShader::ModulationConstant, QVector4D(o, o, o, o));
 
         for (int i = 0; i < NTex; ++i)
         {
@@ -434,13 +444,13 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
             m_rect[i]->render(region, rect[i]);
             m_rect[i]->unbind();
         }
-        KWin::ShaderManager::instance()->popShader();
+        ShaderManager::instance()->popShader();
         
         QRegion reg = geo;
         QMatrix4x4 mvp = data.screenProjectionMatrix();
 
         //Outline
-        shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::UniformColor);
+        shader = ShaderManager::instance()->pushShader(ShaderTrait::UniformColor);
         shader->setUniform("modelViewProjectionMatrix", mvp);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         reg -= QRegion(geo.adjusted(1, 1, -1, -1));
@@ -448,10 +458,10 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
         for (int i = 0; i < NTex; ++i)
             reg -= rect[i];
         fillRegion(reg, QColor(255, 255, 255, m_alpha*data.opacity()));
-        KWin::ShaderManager::instance()->popShader();
+        ShaderManager::instance()->popShader();
 
         //Borderline
-        shader = KWin::ShaderManager::instance()->pushShader(KWin::ShaderTrait::UniformColor);
+        shader = ShaderManager::instance()->pushShader(ShaderTrait::UniformColor);
         shader->setUniform("modelViewProjectionMatrix", mvp);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         reg = QRegion(geo.adjusted(-1, -1, 1, 1));
@@ -463,7 +473,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
             fillRegion(reg, QColor(0, 0, 0, 255*data.opacity()));
         else
             fillRegion(reg, QColor(0, 0, 0, m_alpha*data.opacity()));
-        KWin::ShaderManager::instance()->popShader();
+        ShaderManager::instance()->popShader();
     }
 
     glDisable(GL_BLEND);
@@ -472,7 +482,7 @@ LightlyShadersEffect::paintWindow(KWin::EffectWindow *w, int mask, QRegion regio
 void
 LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
 {
-    KWin::GLVertexBuffer *vbo = KWin::GLVertexBuffer::streamingBuffer();
+    GLVertexBuffer *vbo = GLVertexBuffer::streamingBuffer();
     vbo->reset();
     vbo->setUseColor(true);
     vbo->setColor(c);
@@ -490,20 +500,20 @@ LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
     vbo->render(GL_TRIANGLES);
 }
 
-QList<KWin::GLTexture> LightlyShadersEffect::getTexRegions(KWin::EffectWindow *w, const QRect* rect)
+QList<GLTexture> LightlyShadersEffect::getTexRegions(EffectWindow *w, const QRect* rect)
 {
-    QList<KWin::GLTexture> sample_tex;
-    const QRect s(KWin::effects->virtualScreenGeometry());
+    QList<GLTexture> sample_tex;
+    const QRect s(effects->virtualScreenGeometry());
 
     for (int i = 0; i < NTex; ++i)
     {
         if(m_clip[w].contains(rect[i])) {
-            sample_tex.append(KWin::GLTexture(GL_TEXTURE_RECTANGLE));
+            sample_tex.append(GLTexture(GL_TEXTURE_RECTANGLE));
             continue;
         }
 
         QImage img(rect[i].width(), rect[i].height(), QImage::Format_ARGB32_Premultiplied);
-        KWin::GLTexture t = KWin::GLTexture(img, GL_TEXTURE_RECTANGLE);
+        GLTexture t = GLTexture(img, GL_TEXTURE_RECTANGLE);
         t.bind();
         glCopyTexSubImage2D(
             GL_TEXTURE_RECTANGLE, 
@@ -531,7 +541,10 @@ LightlyShadersEffect::enabledByDefault()
 
 bool LightlyShadersEffect::supported()
 {
-    return KWin::effects->isOpenGLCompositing() && KWin::GLRenderTarget::supported();
+    return effects->isOpenGLCompositing() && GLRenderTarget::supported();
 }
 
 #include "lightlyshaders.moc"
+
+
+} // namespace KWin

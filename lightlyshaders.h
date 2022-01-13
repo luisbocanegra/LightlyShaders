@@ -22,7 +22,9 @@
 
 #include <kwineffects.h>
 
-namespace KWin { class GLTexture; }
+namespace KWin {
+
+class GLTexture;
 
 class Q_DECL_EXPORT LightlyShadersEffect : public KWin::Effect
 
@@ -37,33 +39,36 @@ public:
     
     void setRoundness(const int r);
     void reconfigure(ReconfigureFlags flags);
-    void windowMaximizedStateChanged(KWin::EffectWindow *w, bool horizontal, bool vertical);
-    void prePaintWindow(KWin::EffectWindow* w, KWin::WindowPrePaintData& data, std::chrono::milliseconds time);
-    void paintWindow(KWin::EffectWindow* w, int mask, QRegion region, KWin::WindowPaintData& data);
+    void prePaintWindow(EffectWindow* w, WindowPrePaintData& data, std::chrono::milliseconds time);
+    void paintWindow(EffectWindow* w, int mask, QRegion region, WindowPaintData& data);
     virtual int requestedEffectChainPosition() const { return 99; }
 
 protected Q_SLOTS:
-    void windowAdded(KWin::EffectWindow *window);
+    void windowAdded(EffectWindow *window);
+    void windowClosed(EffectWindow *window);
+    void windowMaximizedStateChanged(EffectWindow *w, bool horizontal, bool vertical);
 
 private:
     void genMasks();
     void genRect();
 
     void fillRegion(const QRegion &reg, const QColor &c);
-    QList<KWin::GLTexture> getTexRegions(KWin::EffectWindow *w, const QRect* rect);
+    QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect);
 
     enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
-    KWin::GLTexture *m_tex[NTex];
-    KWin::GLTexture *m_rect[NTex];
-    KWin::GLTexture *m_dark_rect[NTex];
+    GLTexture *m_tex[NTex];
+    GLTexture *m_rect[NTex];
+    GLTexture *m_dark_rect[NTex];
     int m_size, m_rSize, m_alpha;
     bool m_outline, m_dark_theme, m_disabled_for_maximized;
     QSize m_corner;
-    QMap<KWin::EffectWindow *, QRegion> m_clip;
-    KWin::EffectWindow *m_applyEffect;
-    KWin::GLShader *m_shader;
-    QList<KWin::EffectWindow *> m_managed;
+    QMap<EffectWindow *, QRegion> m_clip;
+    EffectWindow *m_applyEffect;
+    GLShader *m_shader;
+    QList<EffectWindow *> m_managed;
 };
+
+} // namespace KWin
 
 #endif //LIGHTLYSHADERS_H
 
