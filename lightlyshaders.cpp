@@ -298,6 +298,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     bool bottom_w = true;
     for (EffectWindow *window : stackingOrder) {
         if(!window->isOnCurrentDesktop()) continue;
+        if(window->isMinimized()) continue;
         if(bottom_w && window != w) continue;
         bottom_w = false;
         if(!bottom_w && window != w)
