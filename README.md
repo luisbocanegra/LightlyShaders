@@ -17,9 +17,7 @@ In order to work around that, this fork uses a hack that tries to restore the sh
 Because of this it may work differently with different themes, corner radiuses or shadow settings. **Your mileage may vary.**
 
  ## 2. This effect can be resource-hungry!
-Although recent changes have improved performance footprint of this plugin, depending on your hardware you still can have performance hit when using it. See [issue #6](https://github.com/a-parhom/LightlyShaders/issues/6). 
-
-This is because of the approach used for restoring the shadows in the cut out regions.
+Thanks to recent changes the performance of this plugin has improved. But depending on your hardware, you still can have performance hit. See [issue #6](https://github.com/a-parhom/LightlyShaders/issues/6). 
 
 
  # Dependencies:
