@@ -32,7 +32,7 @@
 
 namespace KWin {
 
-#if KWIN_EFFECT_API_VERSION >= 233
+#ifdef KWIN_PLUGIN_FACTORY_NAME
 KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(  LightlyShadersEffect,
                                         "lightlyshaders.json",
                                         return LightlyShadersEffect::supported();,
