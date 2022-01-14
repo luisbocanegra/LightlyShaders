@@ -32,11 +32,18 @@
 
 namespace KWin {
 
+#if KWIN_EFFECT_API_VERSION >= 233
+KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(  LightlyShadersEffect,
+                                        "lightlyshaders.json",
+                                        return LightlyShadersEffect::supported();,
+                                        return LightlyShadersEffect::enabledByDefault();)
+#else
 KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(  LightlyShadersFactory,
                                         LightlyShadersEffect,
                                         "lightlyshaders.json",
                                         return LightlyShadersEffect::supported();,
                                         return LightlyShadersEffect::enabledByDefault();)
+#endif
 
 LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
 {
