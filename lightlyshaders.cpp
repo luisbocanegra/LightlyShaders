@@ -174,7 +174,7 @@ LightlyShadersEffect::genMasks()
     p.setPen(Qt::NoPen);
     p.setBrush(Qt::black);
     p.setRenderHint(QPainter::Antialiasing);
-    p.drawEllipse(QRect(1,1, m_size*2, m_size*2));
+    p.drawEllipse(QRect(2,2, m_size*2-1, m_size*2-1));
     p.end();
 
     m_tex[TopLeft] = new GLTexture(img.copy(0, 0, (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
@@ -361,14 +361,6 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     //get samples with shadow
     QList<GLTexture> shadow_corners_tex = getTexRegions(w, big_rect);
 
-    const QRect rect[NTex] =
-    {
-        QRect(geo.topLeft()-QPoint(1,1), m_corner),
-        QRect(geo.topRight()-QPoint(m_size-1, 1), m_corner),
-        QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), m_corner),
-        QRect(geo.bottomLeft()-QPoint(1, m_size-1), m_corner)
-    };
-
     //Draw rounded corners with shadows    
     glEnable(GL_BLEND);
     const int mvpMatrixLocation = m_shader->uniformLocation("modelViewProjectionMatrix");
@@ -379,13 +371,13 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     sm->pushShader(m_shader);
     for (int i = 0; i < NTex; ++i)
     {
-        if(m_clip[w].contains(rect[i])) {
+        if(m_clip[w].contains(big_rect[i])) {
             continue;
         }
 
         QMatrix4x4 mvp = data.screenProjectionMatrix();
-        QVector2D samplerSize = QVector2D(rect[i].width(), rect[i].height());
-        mvp.translate(rect[i].x(), rect[i].y());
+        QVector2D samplerSize = QVector2D(big_rect[i].width(), big_rect[i].height());
+        mvp.translate(big_rect[i].x(), big_rect[i].y());
         m_shader->setUniform(mvpMatrixLocation, mvp);
         m_shader->setUniform(samplerSizeLocation, samplerSize);
         m_shader->setUniform(cornerNumberLocation, i);
@@ -395,7 +387,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         shadow_corners_tex[i].bind();
         glActiveTexture(GL_TEXTURE0);
         empty_corners_tex[i].bind();
-        empty_corners_tex[i].render(region, rect[i]);
+        empty_corners_tex[i].render(region, big_rect[i]);
         empty_corners_tex[i].unbind();
         shadow_corners_tex[i].unbind();
         m_tex[i]->unbind();
@@ -429,6 +421,14 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         ShaderManager::instance()->popShader();
 
         //Inner corners
+        const QRect rect[NTex] =
+        {
+            QRect(geo.topLeft()-QPoint(1,1), m_corner),
+            QRect(geo.topRight()-QPoint(m_size-1, 1), m_corner),
+            QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), m_corner),
+            QRect(geo.bottomLeft()-QPoint(1, m_size-1), m_corner)
+        };
+
         shader = ShaderManager::instance()->pushShader(ShaderTrait::MapTexture|ShaderTrait::UniformColor|ShaderTrait::Modulate);
         shader->setUniform(GLShader::ModulationConstant, QVector4D(o, o, o, o));
 
