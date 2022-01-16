@@ -47,13 +47,13 @@ void main(void)
     vec4 texShadowHorCur = texture(shadow_sampler, ShadowHorCoord);
     vec4 texShadowVerCur = texture(shadow_sampler, ShadowVerCoord);
 
-    vec3 diffHorCur = texHorCur.rgb-texShadowHorCur.rgb;
-    vec3 diffVerCur = texVerCur.rgb-texShadowVerCur.rgb;
+    vec3 diffHorCur = (texHorCur.rgb-texShadowHorCur.rgb)*(tex.rgb/texHorCur.rgb);
+    vec3 diffVerCur = (texVerCur.rgb-texShadowVerCur.rgb)*(tex.rgb/texVerCur.rgb);
 
-    vec3 diff0 = tex0.rgb - texShadow0.rgb;
+    vec3 diff0 = (tex0.rgb - texShadow0.rgb)*(tex.rgb/tex0.rgb);
 
     vec3 diff = diffHorCur + (diffVerCur-diff0);
-    
+
     tex.rgb = tex.rgb - diff.rgb;
 
     tex.a = texCorner.a;
