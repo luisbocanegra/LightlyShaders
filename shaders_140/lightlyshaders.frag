@@ -14,19 +14,24 @@ void main(void)
 {
     vec2 ShadowHorCoord;
     vec2 ShadowVerCoord;
+    vec2 Shadow0;
 
     if (corner_number == 0) {
         ShadowHorCoord = vec2(texcoord0.x, sampler_size.y);
         ShadowVerCoord = vec2(0.0, sampler_size.y - texcoord0.y);
+        Shadow0 = vec2(0.0, sampler_size.y);
     } else if (corner_number == 1) {
         ShadowHorCoord = vec2(texcoord0.x, sampler_size.y);
         ShadowVerCoord = vec2(sampler_size.x, sampler_size.y - texcoord0.y);
+        Shadow0 = vec2(sampler_size.x, sampler_size.y);
     } else if (corner_number == 2) {
         ShadowHorCoord = vec2(texcoord0.x, 0.0);
         ShadowVerCoord = vec2(sampler_size.x, sampler_size.y - texcoord0.y);
+        Shadow0 = vec2(sampler_size.x, 0.0);
     } else if (corner_number == 3) {
         ShadowHorCoord = vec2(texcoord0.x, 0.0);
         ShadowVerCoord = vec2(0.0, sampler_size.y - texcoord0.y);
+        Shadow0 = vec2(0.0, 0.0);
     }
     
     vec2 FragTexCoord = vec2(texcoord0.x, sampler_size.y - texcoord0.y);
@@ -34,38 +39,22 @@ void main(void)
     vec4 tex = texture(background_sampler, FragTexCoord);
     vec4 texCorner = texture(radius_sampler, texcoord0);
 
+    vec4 tex0 = texture(background_sampler, Shadow0);
+    vec4 texShadow0 = texture(shadow_sampler, Shadow0);
+
     vec4 texHorCur = texture(background_sampler, ShadowHorCoord);
     vec4 texVerCur = texture(background_sampler, ShadowVerCoord);
     vec4 texShadowHorCur = texture(shadow_sampler, ShadowHorCoord);
     vec4 texShadowVerCur = texture(shadow_sampler, ShadowVerCoord);
 
-    vec4 texHorPrev = texture(background_sampler, ShadowHorCoord-vec2(-1.0, 0.0));
-    vec4 texVerPrev = texture(background_sampler, ShadowVerCoord-vec2(0.0, -1.0));
-    vec4 texShadowHorPrev = texture(shadow_sampler, ShadowHorCoord-vec2(-1.0, 0.0));
-    vec4 texShadowVerPrev = texture(shadow_sampler, ShadowVerCoord-vec2(0.0, -1.0));
-
-    vec4 texHorNext = texture(background_sampler, ShadowHorCoord-vec2(1.0, 0.0));
-    vec4 texVerNext = texture(background_sampler, ShadowVerCoord-vec2(0.0, 1.0));
-    vec4 texShadowHorNext = texture(shadow_sampler, ShadowHorCoord-vec2(1.0, 0.0));
-    vec4 texShadowVerNext = texture(shadow_sampler, ShadowVerCoord-vec2(0.0, 1.0));
-
-    vec3 diffHorPrev = texHorPrev.rgb - texShadowHorPrev.rgb;
-    vec3 diffVerPrev = texVerPrev.rgb - texShadowVerPrev.rgb;
-    
     vec3 diffHorCur = texHorCur.rgb-texShadowHorCur.rgb;
     vec3 diffVerCur = texVerCur.rgb-texShadowVerCur.rgb;
+
+    vec3 diff0 = tex0.rgb - texShadow0.rgb;
+
+    vec3 diff = diffHorCur + (diffVerCur-diff0);
     
-    vec3 diffHorNext = texHorNext.rgb-texShadowHorNext.rgb;
-    vec3 diffVerNext = texVerNext.rgb-texShadowVerNext.rgb;
-
-    vec3 diffPrev = max(diffHorPrev, diffVerPrev);
-    vec3 diffCur = max(diffHorCur, diffVerCur);
-    vec3 diffNext = max(diffHorNext, diffVerNext);
-
-    vec3 diff1 = max(diffPrev, diffCur);
-    vec3 diff2 = max(diff1, diffNext);
-
-    tex.rgb = tex.rgb - diff2.rgb;
+    tex.rgb = tex.rgb - diff.rgb;
 
     tex.a = texCorner.a;
 
