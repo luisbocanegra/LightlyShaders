@@ -20,6 +20,7 @@
 #include "dbus.h"
 #include "lightlyshaders.h"
 #include <QPainter>
+#include <QPainterPath>
 #include <QImage>
 #include <QFile>
 #include <QTextStream>
@@ -138,7 +139,8 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
             || w->windowType() == NET::Dock
             || w->windowType() == NET::Menu
             || w->windowType() == NET::DropdownMenu
-            || w->windowType() == NET::Tooltip)
+            || w->windowType() == NET::Tooltip
+            || w->windowType() == NET::ComboBox)
         return;
 //    qDebug() << w->windowRole() << w->windowType() << w->windowClass();
     if (!w->hasDecoration() && (w->windowClass().contains("plasma", Qt::CaseInsensitive)
@@ -167,27 +169,88 @@ LightlyShadersEffect::windowMaximizedStateChanged(EffectWindow *w, bool horizont
 }
 
 void
+LightlyShadersEffect::drawSquircle(QPainter *p, float size, int translate)
+{
+    QPainterPath squircle;
+    float squircleSize = size * 2 * (float(m_squircle_ratio)/24.0 * 0.25 + 0.8); //0.8 .. 1.05
+    float squircleEdge = (size * 2) - squircleSize;
+
+    squircle.moveTo(size, 0);
+    squircle.cubicTo(QPointF(squircleSize, 0), QPointF(size * 2, squircleEdge), QPointF(size * 2, size));
+    squircle.cubicTo(QPointF(size * 2, squircleSize), QPointF(squircleSize, size * 2), QPointF(size, size * 2));
+    squircle.cubicTo(QPointF(squircleEdge, size * 2), QPointF(0, squircleSize), QPointF(0, size));
+    squircle.cubicTo(QPointF(0, squircleEdge), QPointF(squircleEdge, 0), QPointF(size, 0));
+
+    squircle.translate(translate,translate);
+
+    p->drawPolygon(squircle.toFillPolygon());
+}
+
+QImage
+LightlyShadersEffect::genMaskImg(int size, bool mask, bool outer_rect)
+{
+    QImage img(size*2, size*2, QImage::Format_ARGB32_Premultiplied);
+    img.fill(Qt::transparent);
+    QPainter p(&img);
+    QRect r(img.rect());
+
+    if(mask) {
+        p.fillRect(img.rect(), Qt::black);
+        p.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+        p.setPen(Qt::NoPen);
+        p.setBrush(Qt::black);
+        p.setRenderHint(QPainter::Antialiasing);
+        if (m_corners_type == SquircledCorners) {
+            drawSquircle(&p, (size-1.5), 2);
+        } else {
+            p.drawEllipse(r.adjusted(2,2,-1,-1));
+        }
+    } else {
+        p.setPen(Qt::NoPen);
+        p.setRenderHint(QPainter::Antialiasing);
+        r.adjust(1, 1, -1, -1);
+        if(outer_rect) {
+            if(m_dark_theme) 
+                p.setBrush(QColor(0, 0, 0, 240));
+            else 
+                p.setBrush(QColor(0, 0, 0, m_alpha));
+        } else {
+            p.setBrush(QColor(255, 255, 255, m_alpha));
+        }
+        if (m_corners_type == SquircledCorners) {
+            drawSquircle(&p, (size-1), 1);
+        } else {
+            p.drawEllipse(r);
+        }
+        p.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+        p.setBrush(Qt::black);
+        r.adjust(1, 1, -1, -1);
+        if (m_corners_type == SquircledCorners) {
+            drawSquircle(&p, (size-2), 2);
+        } else {
+            p.drawEllipse(r);
+        }
+    }
+    p.end();
+
+    return img;
+}
+
+void
 LightlyShadersEffect::genMasks()
 {
     for (int i = 0; i < NTex; ++i)
         if (m_tex[i])
             delete m_tex[i];
 
-    QImage img((m_size+1)*2, (m_size+1)*2, QImage::Format_ARGB32_Premultiplied);
-    img.fill(Qt::transparent);
-    QPainter p(&img);
-    p.fillRect(img.rect(), Qt::black);
-    p.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-    p.setPen(Qt::NoPen);
-    p.setBrush(Qt::black);
-    p.setRenderHint(QPainter::Antialiasing);
-    p.drawEllipse(QRect(2,2, m_size*2-1, m_size*2-1));
-    p.end();
+    int size = m_size + 1;
 
-    m_tex[TopLeft] = new GLTexture(img.copy(0, 0, (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
-    m_tex[TopRight] = new GLTexture(img.copy((m_size+1), 0, (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
-    m_tex[BottomRight] = new GLTexture(img.copy((m_size+1), (m_size+1), (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
-    m_tex[BottomLeft] = new GLTexture(img.copy(0, (m_size+1), (m_size+1), (m_size+1)), GL_TEXTURE_RECTANGLE);
+    QImage img = genMaskImg(size, true, false);
+    
+    m_tex[TopLeft] = new GLTexture(img.copy(0, 0, size, size), GL_TEXTURE_RECTANGLE);
+    m_tex[TopRight] = new GLTexture(img.copy(size, 0, size, size), GL_TEXTURE_RECTANGLE);
+    m_tex[BottomRight] = new GLTexture(img.copy(size, size, size, size), GL_TEXTURE_RECTANGLE);
+    m_tex[BottomLeft] = new GLTexture(img.copy(0, size, size, size), GL_TEXTURE_RECTANGLE);
 }
 
 void
@@ -200,52 +263,21 @@ LightlyShadersEffect::genRect()
             delete m_dark_rect[i];
     }
 
-    m_rSize = m_size+1;
+    int size = m_size+1;
+    QImage img = genMaskImg(size, false, false);
 
-    QImage img(m_rSize*2, m_rSize*2, QImage::Format_ARGB32_Premultiplied);
-    img.fill(Qt::transparent);
-    QPainter p(&img);
-    QRect r(img.rect());
-    p.setPen(Qt::NoPen);
-    p.setRenderHint(QPainter::Antialiasing);
-    r.adjust(1, 1, -1, -1);
-    p.setBrush(QColor(255, 255, 255, m_alpha));
-    p.drawEllipse(r);
-    p.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-    p.setBrush(Qt::black);
-    r.adjust(1, 1, -1, -1);
-    p.drawEllipse(r);
-    p.end();
+    m_rect[TopLeft] = new GLTexture(img.copy(0, 0, size, size));
+    m_rect[TopRight] = new GLTexture(img.copy(size, 0, size, size));
+    m_rect[BottomRight] = new GLTexture(img.copy(size, size, size, size));
+    m_rect[BottomLeft] = new GLTexture(img.copy(0, size, size, size));
 
-    m_rect[TopLeft] = new GLTexture(img.copy(0, 0, m_rSize, m_rSize));
-    m_rect[TopRight] = new GLTexture(img.copy(m_rSize, 0, m_rSize, m_rSize));
-    m_rect[BottomRight] = new GLTexture(img.copy(m_rSize, m_rSize, m_rSize, m_rSize));
-    m_rect[BottomLeft] = new GLTexture(img.copy(0, m_rSize, m_rSize, m_rSize));
+    size += 1;
+    QImage img2 = genMaskImg(size, false, true);
 
-    m_rSize = m_size+2;
-
-    QImage img2(m_rSize*2, m_rSize*2, QImage::Format_ARGB32_Premultiplied);
-    img2.fill(Qt::transparent);
-    QPainter p2(&img2);
-    QRect r2(img2.rect());
-    p2.setPen(Qt::NoPen);
-    p2.setRenderHint(QPainter::Antialiasing);
-    r2.adjust(1, 1, -1, -1);
-    if(m_dark_theme) 
-        p2.setBrush(QColor(0, 0, 0, 240));
-    else 
-        p2.setBrush(QColor(0, 0, 0, m_alpha));
-    p2.drawEllipse(r2);
-    p2.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-    p2.setBrush(Qt::black);
-    r2.adjust(1, 1, -1, -1);
-    p2.drawEllipse(r2);
-    p2.end();
-
-    m_dark_rect[TopLeft] = new GLTexture(img2.copy(0, 0, m_rSize, m_rSize));
-    m_dark_rect[TopRight] = new GLTexture(img2.copy(m_rSize, 0, m_rSize, m_rSize));
-    m_dark_rect[BottomRight] = new GLTexture(img2.copy(m_rSize, m_rSize, m_rSize, m_rSize));
-    m_dark_rect[BottomLeft] = new GLTexture(img2.copy(0, m_rSize, m_rSize, m_rSize));
+    m_dark_rect[TopLeft] = new GLTexture(img2.copy(0, 0, size, size));
+    m_dark_rect[TopRight] = new GLTexture(img2.copy(size, 0, size, size));
+    m_dark_rect[BottomRight] = new GLTexture(img2.copy(size, size, size, size));
+    m_dark_rect[BottomLeft] = new GLTexture(img2.copy(0, size, size, size));
 }
 
 void
@@ -266,6 +298,8 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
     m_outline = conf.readEntry("outline", false);
     m_dark_theme = conf.readEntry("dark_theme", false);
     m_disabled_for_maximized = conf.readEntry("disabled_for_maximized", false);
+    m_corners_type = conf.readEntry("corners_type", int(RoundedCorners));
+    m_squircle_ratio = int(conf.readEntry("squircle_ratio", 12));
     setRoundness(conf.readEntry("roundness", 5));
 }
 
