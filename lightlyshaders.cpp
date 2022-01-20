@@ -152,7 +152,7 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
     if (w->windowClass().contains("plasma", Qt::CaseInsensitive) && !w->isNormalWindow() && !w->isDialog() && !w->isModal())
         return;
 
-    if (w->isDesktop() || w->isPopupMenu() || w->isTooltip())
+    if (w->isDesktop() || w->isPopupMenu() || w->isTooltip() || w->isSpecialWindow())
         return;
     m_managed << w;
 }
@@ -312,6 +312,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
             || !w->isPaintingEnabled()
             || effects->hasActiveFullScreenEffect()
             || w->isDesktop()
+            || w->isSpecialWindow()
             || (w == m_applyEffect))
     {
         effects->prePaintWindow(w, data, time);
@@ -374,6 +375,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
             || !w->isPaintingEnabled()
             || effects->hasActiveFullScreenEffect()
             || w->isDesktop()
+            || w->isSpecialWindow()
 //            || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))
             || !hasShadow(w)
             || (w == m_applyEffect))
