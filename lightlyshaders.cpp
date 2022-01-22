@@ -64,54 +64,73 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
         shadersDir = QStringLiteral("kwin/shaders/1.40/");
 
     const QString shader = QStandardPaths::locate(QStandardPaths::GenericDataLocation, shadersDir + QStringLiteral("lightlyshaders.frag"));
+    const QString diff_shader = QStandardPaths::locate(QStandardPaths::GenericDataLocation, shadersDir + QStringLiteral("lightlyshaders_diff.frag"));
 
-    QFile file(shader);
-    if (file.open(QFile::ReadOnly))
-    {
-        QByteArray frag = file.readAll();
-        m_shader = ShaderManager::instance()->generateCustomShader(ShaderTrait::MapTexture, QByteArray(), frag);
-        file.close();
-        //qDebug() << frag;
-        //qDebug() << "shader valid: " << m_shader->isValid();
-        if (m_shader->isValid())
-        {
-            m_applyEffect = NULL;
-            const int background_sampler = m_shader->uniformLocation("background_sampler");
-            const int shadow_sampler = m_shader->uniformLocation("shadow_sampler");
-            const int radius_sampler = m_shader->uniformLocation("radius_sampler");
-            const int corner_number = m_shader->uniformLocation("corner_number");
-            const int sampler_size = m_shader->uniformLocation("sampler_size");
-            ShaderManager::instance()->pushShader(m_shader);
-            m_shader->setUniform(sampler_size, 4);
-            m_shader->setUniform(corner_number, 3);
-            m_shader->setUniform(radius_sampler, 2);
-            m_shader->setUniform(shadow_sampler, 1);
-            m_shader->setUniform(background_sampler, 0);
-            ShaderManager::instance()->popShader();
+    QFile file_shader(shader);
+    QFile file_diff_shader(diff_shader);
 
-            const auto stackingOrder = effects->stackingOrder();
-            for (EffectWindow *window : stackingOrder) {
-                windowAdded(window);
-            }
-
-            connect(effects, &EffectsHandler::windowAdded, this, &LightlyShadersEffect::windowAdded);
-            connect(effects, &EffectsHandler::windowClosed, this, &LightlyShadersEffect::windowClosed);
-            connect(effects, &EffectsHandler::windowMaximizedStateChanged, this, &LightlyShadersEffect::windowMaximizedStateChanged);
-        }
-        else
-            qDebug() << "LightlyShaders: no valid shaders found! LightlyShaders will not work.";
-    }
-    else
+    if (!file_shader.open(QFile::ReadOnly) || !file_diff_shader.open(QFile::ReadOnly))
     {
         qDebug() << "LightlyShaders: no shaders found! Exiting...";
         deleteLater();
+        return;
     }
+
+    QByteArray frag = file_shader.readAll();
+    m_shader = ShaderManager::instance()->generateCustomShader(ShaderTrait::MapTexture, QByteArray(), frag);
+    file_shader.close();
+
+    QByteArray diff_frag = file_diff_shader.readAll();
+    m_diff_shader = ShaderManager::instance()->generateCustomShader(ShaderTrait::MapTexture, QByteArray(), diff_frag);
+    file_diff_shader.close();
+
+    if (m_shader->isValid() && m_diff_shader->isValid())
+    {
+        m_skipEffect = NULL;
+
+        const int background_sampler = m_shader->uniformLocation("background_sampler");
+        const int shadow_sampler = m_shader->uniformLocation("shadow_sampler");
+        const int radius_sampler = m_shader->uniformLocation("radius_sampler");
+        const int corner_number = m_shader->uniformLocation("corner_number");
+        const int sampler_size = m_shader->uniformLocation("sampler_size");
+        ShaderManager::instance()->pushShader(m_shader);
+        m_shader->setUniform(sampler_size, 4);
+        m_shader->setUniform(corner_number, 3);
+        m_shader->setUniform(radius_sampler, 2);
+        m_shader->setUniform(shadow_sampler, 1);
+        m_shader->setUniform(background_sampler, 0);
+        ShaderManager::instance()->popShader();
+
+        const int background_sampler_diff = m_diff_shader->uniformLocation("background_sampler");
+        const int shadow_sampler_diff = m_diff_shader->uniformLocation("shadow_sampler");
+        const int corner_number_diff = m_diff_shader->uniformLocation("corner_number");
+        const int sampler_size_diff = m_diff_shader->uniformLocation("sampler_size");
+        ShaderManager::instance()->pushShader(m_diff_shader);
+        m_diff_shader->setUniform(sampler_size_diff, 3);
+        m_diff_shader->setUniform(corner_number_diff, 2);
+        m_diff_shader->setUniform(shadow_sampler_diff, 1);
+        m_diff_shader->setUniform(background_sampler_diff, 0);
+        ShaderManager::instance()->popShader();
+
+        const auto stackingOrder = effects->stackingOrder();
+        for (EffectWindow *window : stackingOrder) {
+            windowAdded(window);
+        }
+
+        connect(effects, &EffectsHandler::windowAdded, this, &LightlyShadersEffect::windowAdded);
+        connect(effects, &EffectsHandler::windowClosed, this, &LightlyShadersEffect::windowClosed);
+        connect(effects, &EffectsHandler::windowMaximizedStateChanged, this, &LightlyShadersEffect::windowMaximizedStateChanged);
+    }
+    else
+        qDebug() << "LightlyShaders: no valid shaders found! LightlyShaders will not work.";
 }
 
 LightlyShadersEffect::~LightlyShadersEffect()
 {
     if (m_shader)
         delete m_shader;
+    if (m_diff_shader)
+        delete m_diff_shader;
     for (int i = 0; i < NTex; ++i)
     {
         if (m_tex[i])
@@ -122,6 +141,7 @@ LightlyShadersEffect::~LightlyShadersEffect()
             delete m_dark_rect[i];
     }
     m_clip.clear();
+    m_diff.clear();
 }
 
 void
@@ -129,6 +149,7 @@ LightlyShadersEffect::windowClosed(EffectWindow *w)
 {
     m_managed.removeOne(w);
     m_clip.remove(w);
+    m_diff.remove(w);
 }
 
 void
@@ -167,9 +188,9 @@ LightlyShadersEffect::windowMaximizedStateChanged(EffectWindow *w, bool horizont
     if (!m_disabled_for_maximized) return;
 
     if ((horizontal == true) && (vertical == true))
-        m_applyEffect = w;
+        m_skipEffect = w;
     else
-        m_applyEffect = NULL;
+        m_skipEffect = NULL;
 }
 
 void
@@ -314,11 +335,11 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
-            || effects->hasActiveFullScreenEffect()
+            //|| effects->hasActiveFullScreenEffect()
             || w->isFullScreen()
             || w->isDesktop()
             || w->isSpecialWindow()
-            || (w == m_applyEffect))
+            || (w == m_skipEffect))
     {
         effects->prePaintWindow(w, data, time);
         return;
@@ -371,12 +392,12 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
-            || effects->hasActiveFullScreenEffect()
+            //|| effects->hasActiveFullScreenEffect()
             || w->isFullScreen()
             || w->isDesktop()
             || w->isSpecialWindow()
 //            || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))
-            || (w == m_applyEffect))
+            || (w == m_skipEffect))
     {
         effects->paintWindow(w, mask, region, data);
         return;
@@ -404,8 +425,8 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     //paint the actual window
     effects->paintWindow(w, mask, region, data);
 
-    //get samples with shadow
-    QList<GLTexture> shadow_corners_tex = getTexRegions(w, big_rect);
+    //get shadows
+    getShadowDiffs(w, region, data, big_rect, empty_corners_tex);
 
     //Draw rounded corners with shadows    
     glEnable(GL_BLEND);
@@ -430,12 +451,12 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         glActiveTexture(GL_TEXTURE2);
         m_tex[i]->bind();
         glActiveTexture(GL_TEXTURE1);
-        shadow_corners_tex[i].bind();
+        m_diff[w][i].bind();
         glActiveTexture(GL_TEXTURE0);
         empty_corners_tex[i].bind();
         empty_corners_tex[i].render(region, big_rect[i]);
         empty_corners_tex[i].unbind();
-        shadow_corners_tex[i].unbind();
+        m_diff[w][i].unbind();
         m_tex[i]->unbind();
     }
     sm->popShader();
@@ -547,37 +568,86 @@ LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
     vbo->render(GL_TRIANGLES);
 }
 
-QList<GLTexture> LightlyShadersEffect::getTexRegions(EffectWindow *w, const QRect* rect)
+void
+LightlyShadersEffect::getShadowDiffs(EffectWindow *w, QRegion region, WindowPaintData &data, const QRect* rect, QList<GLTexture> empty_corners_tex, bool force)
+{
+    // if we already have diff cache, return
+    if(m_diff.contains(w) && !force) return;
+
+    //else get the cache
+    const QRect s(effects->virtualScreenGeometry());
+
+    QList<GLTexture> shadow_tex = getTexRegions(w, rect, true);
+    m_diff[w] = QList<GLTexture>();
+
+    const int mvpMatrixLocation = m_diff_shader ->uniformLocation("modelViewProjectionMatrix");
+    const int cornerNumberLocation = m_diff_shader->uniformLocation("corner_number");
+    const int samplerSizeLocation = m_diff_shader->uniformLocation("sampler_size");
+    ShaderManager *sm = ShaderManager::instance();
+    sm->pushShader(m_diff_shader);
+    for (int i = 0; i < NTex; ++i)
+    {
+        GLTexture target = GLTexture(GL_RGBA8, s.size());
+        GLRenderTarget renderTarget(target);
+        GLRenderTarget::pushRenderTarget(&renderTarget);
+
+        QMatrix4x4 mvp = data.screenProjectionMatrix();
+        QVector2D samplerSize = QVector2D(rect[i].width(), rect[i].height());
+        mvp.translate(rect[i].x(), rect[i].y());
+        m_diff_shader->setUniform(mvpMatrixLocation, mvp);
+        m_diff_shader->setUniform(samplerSizeLocation, samplerSize);
+        m_diff_shader->setUniform(cornerNumberLocation, i);
+        glActiveTexture(GL_TEXTURE1);
+        shadow_tex[i].bind();
+        glActiveTexture(GL_TEXTURE0);
+        empty_corners_tex[i].bind();
+        empty_corners_tex[i].render(region, rect[i]);
+        empty_corners_tex[i].unbind();
+        shadow_tex[i].unbind();
+
+        m_diff[w].append(copyTexSubImage(s, rect[i]));
+        GLRenderTarget::popRenderTarget();
+    }
+    sm->popShader();
+}
+
+QList<GLTexture>
+LightlyShadersEffect::getTexRegions(EffectWindow *w, const QRect* rect, bool cache)
 {
     QList<GLTexture> sample_tex;
     const QRect s(effects->virtualScreenGeometry());
 
     for (int i = 0; i < NTex; ++i)
     {
-        if(m_clip[w].contains(rect[i])) {
+        if(m_clip[w].contains(rect[i]) && !cache) {
             sample_tex.append(GLTexture(GL_TEXTURE_RECTANGLE));
             continue;
         }
 
-        QImage img(rect[i].width(), rect[i].height(), QImage::Format_ARGB32_Premultiplied);
-        GLTexture t = GLTexture(img, GL_TEXTURE_RECTANGLE);
-        t.bind();
-        glCopyTexSubImage2D(
-            GL_TEXTURE_RECTANGLE, 
-            0, 
-            0, 
-            0, 
-            rect[i].x(), 
-            s.height() - rect[i].y() - rect[i].height(), 
-            rect[i].width(), 
-            rect[i].height()
-        );
-        t.unbind();
-
-        sample_tex.append(t);
+        sample_tex.append(copyTexSubImage(s, rect[i]));
     }
 
     return sample_tex;
+}
+
+GLTexture
+LightlyShadersEffect::copyTexSubImage(QRect s, QRect rect)
+{
+    QImage img(rect.width(), rect.height(), QImage::Format_ARGB32_Premultiplied);
+    GLTexture t = GLTexture(img, GL_TEXTURE_RECTANGLE);
+    t.bind();
+    glCopyTexSubImage2D(
+        GL_TEXTURE_RECTANGLE, 
+        0, 
+        0, 
+        0, 
+        rect.x(), 
+        s.height() - rect.y() - rect.height(), 
+        rect.width(), 
+        rect.height()
+    );
+    t.unbind();
+    return t;
 }
 
 bool
@@ -586,7 +656,8 @@ LightlyShadersEffect::enabledByDefault()
     return supported();
 }
 
-bool LightlyShadersEffect::supported()
+bool
+LightlyShadersEffect::supported()
 {
     return effects->isOpenGLCompositing() && GLRenderTarget::supported();
 }
