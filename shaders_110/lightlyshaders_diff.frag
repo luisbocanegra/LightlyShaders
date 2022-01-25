@@ -1,6 +1,7 @@
 #version 110
 
 uniform sampler2DRect shadow_sampler;
+uniform sampler2DRect background_sampler;
 
 uniform int corner_number;
 uniform vec2 sampler_size;
@@ -23,19 +24,24 @@ void main()
         Shadow0 = vec2(0.0, 0.0);
     }
 
+    vec2 FragTexCoord = vec2(texcoord0.x, sampler_size.y - texcoord0.y);
+
+    vec4 tex = texture2DRect(background_sampler, FragTexCoord);
+
+    vec4 tex0 = texture2DRect(background_sampler, Shadow0);
     vec4 texShadow0 = texture2DRect(shadow_sampler, Shadow0);
 
+    vec4 texHorCur = texture2DRect(background_sampler, ShadowHorCoord);
+    vec4 texVerCur = texture2DRect(background_sampler, ShadowVerCoord);
     vec4 texShadowHorCur = texture2DRect(shadow_sampler, ShadowHorCoord);
     vec4 texShadowVerCur = texture2DRect(shadow_sampler, ShadowVerCoord);
 
-    vec3 tex = vec3(1.0, 1.0, 1.0);
+    vec3 diffHorCur = (texHorCur.rgb-texShadowHorCur.rgb)*(tex.rgb/texHorCur.rgb);
+    vec3 diffVerCur = (texVerCur.rgb-texShadowVerCur.rgb)*(tex.rgb/texVerCur.rgb);
 
-    vec3 diffHorCur = tex.rgb-texShadowHorCur.rgb;
-    vec3 diffVerCur = tex.rgb-texShadowVerCur.rgb;
-
-    vec3 diff0 = tex.rgb - texShadow0.rgb;
+    vec3 diff0 = (tex0.rgb - texShadow0.rgb)*(tex.rgb/tex0.rgb);
 
     vec3 diff = diffHorCur + (diffVerCur-diff0);
 
-    gl_FragColor = vec4(diff.rgb, 1.0);
+    gl_FragColor = vec4(diff.rgb/tex.rgb, 1.0);
 }
