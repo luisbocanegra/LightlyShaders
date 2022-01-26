@@ -92,9 +92,9 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
         const int shadow_sampler = m_shader->uniformLocation("shadow_sampler");
         const int radius_sampler = m_shader->uniformLocation("radius_sampler");
         const int sampler_size = m_shader->uniformLocation("sampler_size");
-        const int out_of_screen = m_shader->uniformLocation("out_of_screen");
+        const int flip_shadow = m_shader->uniformLocation("flip_shadow");
         ShaderManager::instance()->pushShader(m_shader);
-        m_shader->setUniform(out_of_screen, 4);
+        m_shader->setUniform(flip_shadow, 4);
         m_shader->setUniform(sampler_size, 3);
         m_shader->setUniform(radius_sampler, 2);
         m_shader->setUniform(shadow_sampler, 1);
@@ -452,7 +452,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     glEnable(GL_BLEND);
     const int mvpMatrixLocation = m_shader->uniformLocation("modelViewProjectionMatrix");
     const int samplerSizeLocation = m_shader->uniformLocation("sampler_size");
-    const int outOfScreenLocation = m_shader->uniformLocation("out_of_screen");
+    const int flipShadowLocation = m_shader->uniformLocation("flip_shadow");
     ShaderManager *sm = ShaderManager::instance();
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     sm->pushShader(m_shader);
@@ -467,7 +467,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         mvp.translate(big_rect[i].x(), big_rect[i].y());
         m_shader->setUniform(mvpMatrixLocation, mvp);
         m_shader->setUniform(samplerSizeLocation, samplerSize);
-        m_shader->setUniform(outOfScreenLocation, out_of_screen);
+        m_shader->setUniform(flipShadowLocation, out_of_screen && (i==1 || i==2));
         glActiveTexture(GL_TEXTURE2);
         m_tex[i]->bind();
         glActiveTexture(GL_TEXTURE1);
