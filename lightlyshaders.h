@@ -59,7 +59,7 @@ private:
     QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, bool force=false);
     void drawSquircle(QPainter *p, float size, int translate);
     QImage genMaskImg(int size, bool mask, bool outer_rect);
-    void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &empty_corners_tex);
+    void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &empty_corners_tex, bool out_of_screen);
 
     enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
     const int NShad = 2;

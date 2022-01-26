@@ -20,6 +20,14 @@ void main(void)
         ShadowVerCoord = vec2(0.0, sampler_size.y - texcoord0.y);
         Shadow0 = vec2(0.0, sampler_size.y);
     } else if (corner_number == 1) {
+        ShadowHorCoord = vec2(texcoord0.x, sampler_size.y);
+        ShadowVerCoord = vec2(sampler_size.x, sampler_size.y - texcoord0.y);
+        Shadow0 = vec2(sampler_size.x, sampler_size.y);
+    } else if (corner_number == 2) {
+        ShadowHorCoord = vec2(texcoord0.x, 0.0);
+        ShadowVerCoord = vec2(sampler_size.x, sampler_size.y - texcoord0.y);
+        Shadow0 = vec2(sampler_size.x, 0.0);
+    } else if (corner_number == 3) {
         ShadowHorCoord = vec2(texcoord0.x, 0.0);
         ShadowVerCoord = vec2(0.0, sampler_size.y - texcoord0.y);
         Shadow0 = vec2(0.0, 0.0);
