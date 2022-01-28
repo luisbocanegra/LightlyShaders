@@ -627,12 +627,16 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
         WindowPaintData d(w);
         d += QPoint(-w_exgeo.x(), -w_exgeo.y());
         QMatrix4x4 projection;
-        projection.ortho(QRect(0, 0, w_exgeo.width(), w_exgeo.height()));
+        QRect frame_geo = QRect(0, 0, w_exgeo.width(), w_exgeo.height());
+        projection.ortho(frame_geo);
         d.setProjectionMatrix(projection);
 
         int mask = PAINT_WINDOW_TRANSFORMED | PAINT_WINDOW_TRANSLUCENT;
+        QRegion region = QRegion(r2[0]);
+        region += r2[1];
+        GLVertexBuffer::setVirtualScreenGeometry(frame_geo);
 
-        effects->drawWindow(w, mask, infiniteRegion(), d);
+        effects->drawWindow(w, mask, region, d);
 
         //get shadow sampler from 2 corners
         shadow_tex = getTexRegions(w, r2, w_exgeo, NShad, true);
@@ -674,7 +678,7 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
             white_tex.bind();
         glActiveTexture(GL_TEXTURE0);
         shadow_tex[i].bind();
-        shadow_tex[i].render(infiniteRegion(), r[i]);
+        shadow_tex[i].render(r[i], r[i]);
         shadow_tex[i].unbind();
         if(!out_of_screen) {
             empty_corners_tex[i].unbind();
