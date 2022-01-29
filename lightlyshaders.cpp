@@ -190,7 +190,7 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
         return;
 
     QRect maximized_area = effects->clientArea(MaximizeArea, w);
-    if (maximized_area == w->frameGeometry())
+    if (maximized_area == w->frameGeometry() && m_disabled_for_maximized)
         m_skipEffect << w;
 
     m_managed << w;
