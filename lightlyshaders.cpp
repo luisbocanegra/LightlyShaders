@@ -154,6 +154,13 @@ LightlyShadersEffect::windowClosed(EffectWindow *w)
     m_diff_update.remove(w);
 }
 
+static bool hasShadow(EffectWindow *w)
+{
+    if(w->expandedGeometry().size() != w->frameGeometry().size())
+        return true;
+    return false;
+}
+
 void
 LightlyShadersEffect::windowAdded(EffectWindow *w)
 {
@@ -169,7 +176,8 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
     if (!w->hasDecoration() && (w->windowClass().contains("plasma", Qt::CaseInsensitive)
             || w->windowClass().contains("krunner", Qt::CaseInsensitive)
             || w->windowClass().contains("latte-dock", Qt::CaseInsensitive)
-            || w->windowClass().contains("lattedock", Qt::CaseInsensitive)))
+            || w->windowClass().contains("lattedock", Qt::CaseInsensitive)
+            || (w->windowClass().contains("reaper", Qt::CaseInsensitive) && !hasShadow(w))))
         return;
 
     if (w->windowClass().contains("plasma", Qt::CaseInsensitive) && !w->isNormalWindow() && !w->isDialog() && !w->isModal())
