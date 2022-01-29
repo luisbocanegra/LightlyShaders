@@ -188,6 +188,11 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
             || w->isTooltip() 
             || w->isSpecialWindow())
         return;
+
+    QRect maximized_area = effects->clientArea(MaximizeArea, w);
+    if (maximized_area == w->frameGeometry())
+        m_skipEffect << w;
+
     m_managed << w;
     m_diff_update[w] = true;
 }
