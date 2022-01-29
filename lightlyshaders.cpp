@@ -86,8 +86,6 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
 
     if (m_shader->isValid() && m_diff_shader->isValid())
     {
-        m_skipEffect = NULL;
-
         const int background_sampler = m_shader->uniformLocation("background_sampler");
         const int shadow_sampler = m_shader->uniformLocation("shadow_sampler");
         const int radius_sampler = m_shader->uniformLocation("radius_sampler");
@@ -149,6 +147,7 @@ void
 LightlyShadersEffect::windowClosed(EffectWindow *w)
 {
     m_managed.removeOne(w);
+    m_skipEffect.removeOne(w);
     m_clip.remove(w);
     m_diff.remove(w);
     m_diff_update.remove(w);
@@ -198,10 +197,12 @@ LightlyShadersEffect::windowMaximizedStateChanged(EffectWindow *w, bool horizont
 {
     if (!m_disabled_for_maximized) return;
 
-    if ((horizontal == true) && (vertical == true))
-        m_skipEffect = w;
-    else
-        m_skipEffect = NULL;
+    if ((horizontal == true) && (vertical == true)) {
+        m_skipEffect << w;
+        m_diff_update[w] = true;
+    } else {
+        m_skipEffect.removeOne(w);
+    }
 }
 
 void
@@ -346,21 +347,22 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
-            //|| effects->hasActiveFullScreenEffect()
+            || effects->hasActiveFullScreenEffect()
             || w->isFullScreen()
             || w->isDesktop()
             || w->isSpecialWindow()
-            || (w == m_skipEffect))
+            || m_skipEffect.contains(w))
     {
         effects->prePaintWindow(w, data, time);
         return;
     }
 
+    const QRect s(effects->virtualScreenGeometry());
     const QRect geo(w->geometry());
     const QRegion exp_geo(w->expandedGeometry());
     const QRegion shadow = exp_geo - geo;
 
-    if(shadow.intersects(data.paint)) {
+    if(shadow.intersects(data.paint) && geo.width() != s.width()) {
         m_diff_update[w] = true;
         //qDebug() << "shadow repainted";
     }
@@ -411,12 +413,12 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
             || !w->isPaintingEnabled()
-            //|| effects->hasActiveFullScreenEffect()
+            || effects->hasActiveFullScreenEffect()
             || w->isFullScreen()
             || w->isDesktop()
             || w->isSpecialWindow()
 //            || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))
-            || (w == m_skipEffect))
+            || m_skipEffect.contains(w))
     {
         effects->paintWindow(w, mask, region, data);
         return;

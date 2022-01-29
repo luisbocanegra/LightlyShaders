@@ -72,9 +72,8 @@ private:
     QMap<EffectWindow *, QRegion> m_clip;
     QMap<EffectWindow *, bool> m_diff_update;
     QMap<EffectWindow *, QList<GLTexture>> m_diff;
-    EffectWindow *m_skipEffect;
     GLShader *m_shader, *m_diff_shader;
-    QList<EffectWindow *> m_managed;
+    QList<EffectWindow *> m_managed, m_skipEffect;
 };
 
 } // namespace KWin
