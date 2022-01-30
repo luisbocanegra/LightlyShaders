@@ -363,7 +363,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     }
 
     const QRect s(effects->virtualScreenGeometry());
-    const QRect geo(w->geometry());
+    const QRect geo(w->frameGeometry());
     const QRegion exp_geo(w->expandedGeometry());
     const QRegion shadow = exp_geo - geo;
 
@@ -401,7 +401,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
 
         bottom_w = false;
         if(!bottom_w && window != w)
-            m_clip[w] += window->geometry().adjusted(m_size, m_size, -m_size, -m_size);
+            m_clip[w] += window->frameGeometry().adjusted(m_size, m_size, -m_size, -m_size);
     }
 
     repaintRegion -= m_clip[w];
