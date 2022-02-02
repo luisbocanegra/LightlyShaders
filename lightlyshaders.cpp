@@ -409,6 +409,17 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     data.clip -= repaintRegion;
     data.paint += repaintRegion;
 
+    if(shadow.isEmpty()) {
+        data.paint = infiniteRegion();
+        GLTexture tex = GLTexture(GL_TEXTURE_RECTANGLE);
+        m_diff[w] = QList<GLTexture>();
+        m_diff_update[w] = false;
+        for (int i = 0; i < NTex; ++i)
+        {
+            m_diff[w].append(tex);
+        }
+    }
+
     effects->prePaintWindow(w, data, time);
 }
 
