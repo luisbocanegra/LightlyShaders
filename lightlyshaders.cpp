@@ -180,6 +180,9 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
             || (w->windowClass().contains("reaper", Qt::CaseInsensitive) && !hasShadow(w))))
         return;
 
+    if(w->windowClass().contains("jetbrains-studio", Qt::CaseInsensitive) && w->caption().contains(QRegularExpression ("win[0-9]+")))
+        return;
+
     if (w->windowClass().contains("plasma", Qt::CaseInsensitive) && !w->isNormalWindow() && !w->isDialog() && !w->isModal())
         return;
 
