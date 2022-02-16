@@ -605,7 +605,7 @@ LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
     vbo->setUseColor(true);
     vbo->setColor(c);
     QVector<float> verts;
-    foreach (const QRect & r, reg.rects())
+    for (const QRect &r : reg)
     {
         verts << r.x() + r.width() << r.y();
         verts << r.x() << r.y();
@@ -662,8 +662,8 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
         d.setProjectionMatrix(projection);
 
         int mask = PAINT_WINDOW_TRANSFORMED | PAINT_WINDOW_TRANSLUCENT;
-        QRegion region = QRegion(r2[0]);
-        region += r2[1];
+        QRegion region = QRegion(r2[Top]);
+        region += r2[Bottom];
         GLVertexBuffer::setVirtualScreenGeometry(frame_geo);
 
         effects->drawWindow(w, mask, region, d);
@@ -680,7 +680,9 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
     const int samplerSizeLocation = m_diff_shader->uniformLocation("sampler_size");
     ShaderManager *sm = ShaderManager::instance();
     sm->pushShader(m_diff_shader);
-    int n = out_of_screen ? NShad : NTex;
+    int n;
+    if(out_of_screen) n = NShad;
+    else n = NTex;
     const QRect *r = out_of_screen ? r2 : r4;
     GLTexture white_tex = GLTexture(GL_TEXTURE_RECTANGLE);
     if(out_of_screen) {
