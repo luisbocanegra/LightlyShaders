@@ -30,6 +30,7 @@
 #include <QMatrix4x4>
 #include <KConfigGroup>
 #include <QtDBus/QDBusConnection>
+#include <QRegularExpression>
 
 namespace KWin {
 
