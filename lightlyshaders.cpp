@@ -391,7 +391,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         repaintRegion += rect[i];
     }
 
-    m_clip[w] = QRegion();
+    QRegion clip = QRegion();
 
     const auto stackingOrder = effects->stackingOrder();
     bool bottom_w = true;
@@ -409,7 +409,12 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
 
         bottom_w = false;
         if(window != w)
-            m_clip[w] += window->frameGeometry().adjusted(m_size, m_size, -m_size, -m_size);
+            clip += window->frameGeometry().adjusted(m_size, m_size, -m_size, -m_size);
+    }
+
+    if(m_clip[w] != clip) {
+        m_clip[w] = clip;
+        m_diff_update[w] = true;
     }
 
     repaintRegion -= m_clip[w];
