@@ -396,8 +396,11 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     const auto stackingOrder = effects->stackingOrder();
     bool bottom_w = true;
     for (EffectWindow *window : stackingOrder) {
-        if(!window->isOnCurrentDesktop()
-            || window->isMinimized()
+        if(!window->isVisible()
+            || window->isDeleted()
+            || window->opacity() != 1.0
+            || window->isUserMove()
+            || window->isUserResize()
             || window->windowClass().contains("latte-dock", Qt::CaseInsensitive)
             || window->windowClass().contains("lattedock", Qt::CaseInsensitive)
             || window->windowClass().contains("peek", Qt::CaseInsensitive)
@@ -405,7 +408,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         ) continue;
 
         bottom_w = false;
-        if(!bottom_w && window != w)
+        if(window != w)
             m_clip[w] += window->frameGeometry().adjusted(m_size, m_size, -m_size, -m_size);
     }
 
