@@ -194,7 +194,8 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
             || w->isSpecialWindow()
             || w->isDropdownMenu()
             || w->isPopupWindow()
-            || w->isLockScreen())
+            || w->isLockScreen()
+            || w->isSplash())
         return;
 
     QRect maximized_area = effects->clientArea(MaximizeArea, w);
