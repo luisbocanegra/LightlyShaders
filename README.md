@@ -39,6 +39,10 @@ Impose devastating sanctions, including:
   - Provide Ukraine with financial assistance
   - Provide Ukraine with humanitarian assistance
 
+You can support Ukraine financially:
+  - [Support Ukrainian army](https://bank.gov.ua/en/about/support-the-armed-forces)
+  - [Humanitarian aid to Ukraine](https://bank.gov.ua/en/about/humanitarian-aid-to-ukraine)
+
 
  # Warnings:
 
