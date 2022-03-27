@@ -1,15 +1,3 @@
- ![default](https://github.com/a-parhom/LightlyShaders/blob/master/screenshot.png)
- This is a fork of Luwx's [LightlyShaders](https://github.com/Luwx/LightlyShaders), which in turn is a fork of [ShapeCorners](https://sourceforge.net/projects/shapecorners/). 
-
- This fork fixes the infamous [bug](https://bugs.kde.org/show_bug.cgi?id=395725) with blurred corners, though in a somehow hacky way. 
- 
- Also, it adds the following functionality:
- - an additional outer dark outline; 
- - an option to make dark outline totally black (good with dark themes);
- - an option to disable plugin for maximized windows;
- - an option to use squircled corners instead of rounded (based on code from ZacharyTalis's [ShapeCorners fork](https://github.com/ZacharyTalis/ShapeCorners)).
-
-
   # My foreign friends, we need your help! Russia has invaded Ukraine. It’s war and it’s real!
 
 Russia has launched a full-scale invasion of Ukraine - it's NOT a Ukrainian crisis.
@@ -44,6 +32,18 @@ You can support Ukraine financially:
   - [Humanitarian aid to Ukraine](https://bank.gov.ua/en/about/humanitarian-aid-to-ukraine)
 
 
+ ![default](https://github.com/a-parhom/LightlyShaders/blob/master/screenshot.png)
+ This is a fork of Luwx's [LightlyShaders](https://github.com/Luwx/LightlyShaders), which in turn is a fork of [ShapeCorners](https://sourceforge.net/projects/shapecorners/). 
+
+ This fork fixes the infamous [bug](https://bugs.kde.org/show_bug.cgi?id=395725) with blurred corners, though in a somehow hacky way. 
+ 
+ Also, it adds the following functionality:
+ - an additional outer dark outline; 
+ - an option to make dark outline totally black (good with dark themes);
+ - an option to disable plugin for maximized windows;
+ - an option to use squircled corners instead of rounded (based on code from ZacharyTalis's [ShapeCorners fork](https://github.com/ZacharyTalis/ShapeCorners)).
+
+
  # Warnings:
 
  ## 1. This effect is basically a hack!
@@ -54,7 +54,7 @@ In order to work around that, this fork uses a hack that tries to restore the sh
 Because of this it may work differently with different themes, corner radiuses or shadow settings. **Your mileage may vary.**
 
  ## 2. This effect can be resource-hungry!
-Thanks to recent changes the performance of this plugin has improved. But depending on your hardware, you still can have performance hit. See [issue #6](https://github.com/a-parhom/LightlyShaders/issues/6). 
+Thanks to recent changes the performance of this plugin has improved. But depending on your hardware, you still can have performance hit.
 
 
  # Dependencies:
