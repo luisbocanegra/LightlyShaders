@@ -26,7 +26,7 @@ namespace KWin {
 
 class GLTexture;
 
-class Q_DECL_EXPORT LightlyShadersEffect : public KWin::Effect
+class Q_DECL_EXPORT LightlyShadersEffect : public Effect
 
 {
     Q_OBJECT
@@ -39,6 +39,7 @@ public:
     
     void setRoundness(const int r);
     void reconfigure(ReconfigureFlags flags) override;
+    void paintScreen(int mask, const QRegion &region, ScreenPaintData &data) override;
     void prePaintWindow(EffectWindow* w, WindowPrePaintData& data, std::chrono::milliseconds time) override;
     void paintWindow(EffectWindow* w, int mask, QRegion region, WindowPaintData& data) override;
     virtual int requestedEffectChainPosition() const override { return 99; }
@@ -55,8 +56,8 @@ private:
     void genRect();
 
     void fillRegion(const QRegion &reg, const QColor &c);
-    GLTexture copyTexSubImage(const QRect &geo, const QRect &rect);
-    QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, bool force=false);
+    GLTexture copyTexSubImage(const QRect &geo, const QRect &rect, bool rescale=true);
+    QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, bool force=false, bool rescale=true);
     void drawSquircle(QPainter *p, float size, int translate);
     QImage genMaskImg(int size, bool mask, bool outer_rect);
     void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &empty_corners_tex, bool out_of_screen);
@@ -74,6 +75,7 @@ private:
     QMap<EffectWindow *, QList<GLTexture>> m_diff;
     GLShader *m_shader, *m_diff_shader;
     QList<EffectWindow *> m_managed, m_skipEffect;
+    qreal m_scale=1.0;
 };
 
 } // namespace KWin
