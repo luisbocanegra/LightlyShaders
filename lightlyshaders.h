@@ -56,18 +56,19 @@ private:
     void genRect();
 
     void fillRegion(const QRegion &reg, const QColor &c);
-    GLTexture copyTexSubImage(const QRect &geo, const QRect &rect, bool rescale=true);
-    QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, bool force=false, bool rescale=true);
+    GLTexture copyTexSubImage(const QRect &geo, const QRect &rect);
+    QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, bool force=false);
     void drawSquircle(QPainter *p, float size, int translate);
     QImage genMaskImg(int size, bool mask, bool outer_rect);
     void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &empty_corners_tex, bool out_of_screen);
+    QRect scale(const QRect rect);
 
     enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
     enum { Top = 0, Bottom, NShad };
     GLTexture *m_tex[NTex];
     GLTexture *m_rect[NTex];
     GLTexture *m_dark_rect[NTex];
-    int m_size, m_alpha, m_corners_type, m_squircle_ratio;
+    int m_size, m_size_scaled, m_alpha, m_corners_type, m_squircle_ratio, m_roundness;
     bool m_outline, m_dark_theme, m_disabled_for_maximized;
     QSize m_corner;
     QMap<EffectWindow *, QRegion> m_clip;
