@@ -180,6 +180,7 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
             || w->windowClass().contains("lattedock", Qt::CaseInsensitive)
             || w->windowClass().contains("albert", Qt::CaseInsensitive)
             || w->windowClass().contains("ksplash", Qt::CaseInsensitive)
+            || w->windowClass().contains("ksmserver", Qt::CaseInsensitive)
             || (w->windowClass().contains("reaper", Qt::CaseInsensitive) && !hasShadow(w))))
         return;
 
