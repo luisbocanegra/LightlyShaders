@@ -170,7 +170,8 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
             || w->windowType() == NET::Menu
             || w->windowType() == NET::DropdownMenu
             || w->windowType() == NET::Tooltip
-            || w->windowType() == NET::ComboBox)
+            || w->windowType() == NET::ComboBox
+            || w->windowType() == NET::Splash)
         return;
 //    qDebug() << w->windowRole() << w->windowType() << w->windowClass();
     if (!w->hasDecoration() && (w->windowClass().contains("plasma", Qt::CaseInsensitive)
@@ -178,6 +179,7 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
             || w->windowClass().contains("latte-dock", Qt::CaseInsensitive)
             || w->windowClass().contains("lattedock", Qt::CaseInsensitive)
             || w->windowClass().contains("albert", Qt::CaseInsensitive)
+            || w->windowClass().contains("ksplash", Qt::CaseInsensitive)
             || (w->windowClass().contains("reaper", Qt::CaseInsensitive) && !hasShadow(w))))
         return;
 
