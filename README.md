@@ -59,7 +59,7 @@ Thanks to recent changes the performance of this plugin has improved. But depend
 
  # Dependencies:
  
-Plasma >= 5.23.
+Plasma >= 5.23 (X11 and Wayland supported).
  
 Debian based (Ubuntu, Kubuntu, KDE Neon):
 ```
