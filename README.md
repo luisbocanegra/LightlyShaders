@@ -35,7 +35,7 @@ You can support Ukraine financially:
  ![default](https://github.com/a-parhom/LightlyShaders/blob/master/screenshot.png)
  This is a fork of Luwx's [LightlyShaders](https://github.com/Luwx/LightlyShaders), which in turn is a fork of [ShapeCorners](https://sourceforge.net/projects/shapecorners/). 
 
- This fork fixes the infamous [bug](https://bugs.kde.org/show_bug.cgi?id=395725) with blurred corners, though in a somehow hacky way. 
+ This fork fixes the infamous [bug](https://bugs.kde.org/show_bug.cgi?id=395725) with blurred corners, as well as the [bug](https://github.com/matinlotfali/KDE-Rounded-Corners/issues/2) with cut out shadows, though in a somehow hacky way. 
  
  Also, it adds the following functionality:
  - an additional outer dark outline; 
