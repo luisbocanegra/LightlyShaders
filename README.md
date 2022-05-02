@@ -1,4 +1,4 @@
-  # My foreign friends, we need your help! Russia has invaded Ukraine. It’s war and it’s real!
+# My foreign friends, we need your help! Russia has invaded Ukraine. It’s war and it’s real!
 
 Russia has launched a full-scale invasion of Ukraine - it's NOT a Ukrainian crisis.
 
@@ -44,20 +44,20 @@ You can support Ukraine financially:
  - an option to use squircled corners instead of rounded (based on code from ZacharyTalis's [ShapeCorners fork](https://github.com/ZacharyTalis/ShapeCorners)).
 
 
- # Warnings:
+# Warnings:
 
- ## 1. This effect is basically a hack!
+## 1. This effect is basically a hack!
 Due to the changes introduced in Plasma 5.23 there is no way to draw original shadows under rounded corners any more. 
 
 In order to work around that, this fork uses a hack that tries to restore the shadow in the cut out regions based on the data from the closest regions with shadows. 
 
 Because of this it may work differently with different themes, corner radiuses or shadow settings. **Your mileage may vary.**
 
- ## 2. This effect can be resource-hungry!
+## 2. This effect can be resource-hungry!
 Thanks to recent changes the performance of this plugin has improved. But depending on your hardware, you still can have performance hit.
 
 
- # Dependencies:
+# Dependencies:
  
 Plasma >= 5.23 (X11 and Wayland supported).
  
@@ -84,6 +84,7 @@ git clone https://github.com/a-parhom/LightlyShaders
 
 cd LightlyShaders; mkdir qt5build; cd qt5build; cmake ../ -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && (kwin_x11 --replace &)
 ```
- 
- 
+
+## Note
+After some updates of Plasma this plugin may need to be recompiled in order to work with changes introduced to KWin.
  
