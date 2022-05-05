@@ -1,6 +1,9 @@
 # Support Ukraine:
-  - [Ukrainian army](https://bank.gov.ua/en/about/support-the-armed-forces)
-  - [Humanitarian aid to Ukraine](https://bank.gov.ua/en/about/humanitarian-aid-to-ukraine)
+  - Via United24 platform (the initiative of the President of Ukraine):
+    - [One click donation (credit card, bank transfer or crypto)](https://u24.gov.ua/)
+  - Via National bank of Ukraine:
+    - [Ukrainian army](https://bank.gov.ua/en/about/support-the-armed-forces)
+    - [Humanitarian aid to Ukraine](https://bank.gov.ua/en/about/humanitarian-aid-to-ukraine)
 
 
  ![default](https://github.com/a-parhom/LightlyShaders/blob/master/screenshot.png)
