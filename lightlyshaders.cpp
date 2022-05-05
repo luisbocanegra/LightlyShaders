@@ -247,6 +247,7 @@ LightlyShadersEffect::genMaskImg(int size, bool mask, bool outer_rect)
     img.fill(Qt::transparent);
     QPainter p(&img);
     QRect r(img.rect());
+    int offset_decremented = m_shadow_offset-1;
 
     if(mask) {
         p.fillRect(img.rect(), Qt::black);
@@ -255,14 +256,14 @@ LightlyShadersEffect::genMaskImg(int size, bool mask, bool outer_rect)
         p.setBrush(Qt::black);
         p.setRenderHint(QPainter::Antialiasing);
         if (m_corners_type == SquircledCorners) {
-            drawSquircle(&p, (size-1.5), 2);
+            drawSquircle(&p, (size-m_shadow_offset), m_shadow_offset);
         } else {
-            p.drawEllipse(r.adjusted(2,2,-1,-1));
+            p.drawEllipse(r.adjusted(m_shadow_offset,m_shadow_offset,-m_shadow_offset,-m_shadow_offset));
         }
     } else {
         p.setPen(Qt::NoPen);
         p.setRenderHint(QPainter::Antialiasing);
-        r.adjust(1, 1, -1, -1);
+        r.adjust(offset_decremented, offset_decremented, -offset_decremented, -offset_decremented);
         if(outer_rect) {
             if(m_dark_theme) 
                 p.setBrush(QColor(0, 0, 0, 240));
@@ -272,7 +273,7 @@ LightlyShadersEffect::genMaskImg(int size, bool mask, bool outer_rect)
             p.setBrush(QColor(255, 255, 255, m_alpha));
         }
         if (m_corners_type == SquircledCorners) {
-            drawSquircle(&p, (size-1), 1);
+            drawSquircle(&p, (size-offset_decremented), offset_decremented);
         } else {
             p.drawEllipse(r);
         }
@@ -280,7 +281,7 @@ LightlyShadersEffect::genMaskImg(int size, bool mask, bool outer_rect)
         p.setBrush(Qt::black);
         r.adjust(1, 1, -1, -1);
         if (m_corners_type == SquircledCorners) {
-            drawSquircle(&p, (size-2), 2);
+            drawSquircle(&p, (size-m_shadow_offset), m_shadow_offset);
         } else {
             p.drawEllipse(r);
         }
@@ -297,7 +298,7 @@ LightlyShadersEffect::genMasks()
         if (m_tex[i])
             delete m_tex[i];
 
-    int size = m_size_scaled + 1;
+    int size = m_size_scaled + m_shadow_offset;
 
     QImage img = genMaskImg(size, true, false);
     
@@ -317,7 +318,7 @@ LightlyShadersEffect::genRect()
             delete m_dark_rect[i];
     }
 
-    int size = m_size_scaled+1;
+    int size = m_size_scaled + (m_shadow_offset-1);
 
     QImage img = genMaskImg(size, false, false);
 
@@ -326,7 +327,7 @@ LightlyShadersEffect::genRect()
     m_rect[BottomRight] = new GLTexture(img.copy(size, size, size, size));
     m_rect[BottomLeft] = new GLTexture(img.copy(0, size, size, size));
 
-    size += 1;
+    size = m_size_scaled + m_shadow_offset;
     QImage img2 = genMaskImg(size, false, true);
 
     m_dark_rect[TopLeft] = new GLTexture(img2.copy(0, 0, size, size));
@@ -340,7 +341,7 @@ LightlyShadersEffect::setRoundness(const int r)
 {
     m_size = r;
     m_size_scaled = r*m_scale;
-    m_corner = QSize(m_size+1, m_size+1);
+    m_corner = QSize(m_size+(m_shadow_offset-1), m_size+(m_shadow_offset-1));
     genMasks();
     genRect();
 }
@@ -356,7 +357,11 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
     m_disabled_for_maximized = conf.readEntry("disabled_for_maximized", false);
     m_corners_type = conf.readEntry("corners_type", int(RoundedCorners));
     m_squircle_ratio = int(conf.readEntry("squircle_ratio", 12));
-    m_roundness = conf.readEntry("roundness", 5);
+    m_shadow_offset = int(conf.readEntry("shadow_offset", 2));
+    m_roundness = int(conf.readEntry("roundness", 5));
+    if(m_shadow_offset>=m_roundness) {
+        m_shadow_offset = m_roundness-1;
+    }
     int roundness = m_roundness;
     if(m_scale!=1.0) {
         roundness /= m_scale;
@@ -391,14 +396,16 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         //qDebug() << "shadow repainted";
     }
 
+    int offset_decremented = m_shadow_offset-1;
+
     const QRect rect[NTex] =
     {
-        QRect(geo.topLeft()-QPoint(1,1), m_corner),
-        QRect(geo.topRight()-QPoint(m_size-1, 1), m_corner),
-        QRect(geo.bottomRight()-QPoint(m_size-1, m_size-1), m_corner),
-        QRect(geo.bottomLeft()-QPoint(1, m_size-1), m_corner)
+        QRect(geo.topLeft()-QPoint(offset_decremented,offset_decremented), m_corner),
+        QRect(geo.topRight()-QPoint(m_size-offset_decremented, offset_decremented), m_corner),
+        QRect(geo.bottomRight()-QPoint(m_size-offset_decremented, m_size-offset_decremented), m_corner),
+        QRect(geo.bottomLeft()-QPoint(offset_decremented, m_size-offset_decremented), m_corner)
     };
-    QRegion repaintRegion(QRegion(geo.adjusted(-2, -2, 2, 2))-geo.adjusted(2, 2, -2, -2));
+    QRegion repaintRegion(QRegion(geo.adjusted(-m_shadow_offset, -m_shadow_offset, m_shadow_offset, m_shadow_offset))-geo.adjusted(m_shadow_offset, m_shadow_offset, -m_shadow_offset, -m_shadow_offset));
 
     for (int i = 0; i < NTex; ++i)
     {
@@ -505,13 +512,13 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     //map the corners
     const QRect geo(w->frameGeometry());
     const QRect geo_scaled = scale(geo);
-    const QSize size_scaled(m_size_scaled+2, m_size_scaled+2);
+    const QSize size_scaled(m_size_scaled+m_shadow_offset, m_size_scaled+m_shadow_offset);
     const QRect big_rect_scaled[NTex] =
     {
-        QRect(geo_scaled.topLeft()-QPoint(2,2), size_scaled),
-        QRect(geo_scaled.topRight()-QPoint(m_size_scaled-1, 2), size_scaled),
+        QRect(geo_scaled.topLeft()-QPoint(m_shadow_offset,m_shadow_offset), size_scaled),
+        QRect(geo_scaled.topRight()-QPoint(m_size_scaled-1, m_shadow_offset), size_scaled),
         QRect(geo_scaled.bottomRight()-QPoint(m_size_scaled-1, m_size_scaled-1), size_scaled),
-        QRect(geo_scaled.bottomLeft()-QPoint(2, m_size_scaled-1), size_scaled)
+        QRect(geo_scaled.bottomLeft()-QPoint(m_shadow_offset, m_size_scaled-1), size_scaled)
     };
 
     //copy the empty corner regions
@@ -596,13 +603,14 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         ShaderManager::instance()->popShader();
 
         //Inner corners
-        const QSize i_size = QSize(m_size_scaled+1, m_size_scaled+1);
+        int offset_decremented = m_shadow_offset-1;
+        const QSize i_size = QSize(m_size_scaled+offset_decremented, m_size_scaled+offset_decremented);
         const QRect rect_scaled[NTex] =
         {
-            QRect(geo_scaled.topLeft()-QPoint(1,1), i_size),
-            QRect(geo_scaled.topRight()-QPoint(m_size_scaled-1, 1), i_size),
+            QRect(geo_scaled.topLeft()-QPoint(offset_decremented,offset_decremented), i_size),
+            QRect(geo_scaled.topRight()-QPoint(m_size_scaled-1, offset_decremented), i_size),
             QRect(geo_scaled.bottomRight()-QPoint(m_size_scaled-1, m_size_scaled-1), i_size),
-            QRect(geo_scaled.bottomLeft()-QPoint(1, m_size_scaled-1), i_size)
+            QRect(geo_scaled.bottomLeft()-QPoint(offset_decremented, m_size_scaled-1), i_size)
         };
 
         shader = ShaderManager::instance()->pushShader(ShaderTrait::MapTexture|ShaderTrait::UniformColor|ShaderTrait::Modulate);

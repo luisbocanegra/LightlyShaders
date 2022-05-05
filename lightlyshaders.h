@@ -68,7 +68,7 @@ private:
     GLTexture *m_tex[NTex];
     GLTexture *m_rect[NTex];
     GLTexture *m_dark_rect[NTex];
-    int m_size, m_size_scaled, m_alpha, m_corners_type, m_squircle_ratio, m_roundness;
+    int m_size, m_size_scaled, m_alpha, m_corners_type, m_squircle_ratio, m_roundness, m_shadow_offset;
     bool m_outline, m_dark_theme, m_disabled_for_maximized;
     QSize m_corner;
     QMap<EffectWindow *, QRegion> m_clip;
