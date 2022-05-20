@@ -16,9 +16,7 @@
 #include <KPluginFactory>
 #include <KAboutData>
 
-K_PLUGIN_FACTORY_WITH_JSON(LightlyShadersConfigFactory,
-                           "lightlyshaders_config.json",
-                           registerPlugin<LightlyShadersConfig>();)
+K_PLUGIN_CLASS(LightlyShadersConfig)
 
 
 class ConfigDialog : public QWidget , public Ui::Form
