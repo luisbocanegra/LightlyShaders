@@ -375,7 +375,9 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     if (!m_shader->isValid()
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
+#if KWIN_EFFECT_API_VERSION < 234
             || !w->isPaintingEnabled()
+#endif
             || effects->hasActiveFullScreenEffect()
             || w->isFullScreen()
             || w->isDesktop()
@@ -443,7 +445,11 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     }
 
     repaintRegion -= clip;
+#if KWIN_EFFECT_API_VERSION < 234
     data.clip -= repaintRegion;
+#else
+    data.opaque -= repaintRegion;
+#endif
     data.paint += repaintRegion;
 
     if(shadow.isEmpty()) {
@@ -464,7 +470,11 @@ void
 LightlyShadersEffect::paintScreen(int mask, const QRegion &region, ScreenPaintData &data)
 {
     effects->paintScreen(mask, region, data);
+#if KWIN_EFFECT_API_VERSION < 234
     qreal scale = GLRenderTarget::virtualScreenScale();
+#else
+    qreal scale = effects->renderTargetScale();
+#endif
     qreal zoom = data.xScale();
     if(scale*zoom != m_scale) {
         if(zoom == 1.0 && scale>m_scale) {
@@ -492,7 +502,9 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     if (!m_shader->isValid()
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
+#if KWIN_EFFECT_API_VERSION < 234
             || !w->isPaintingEnabled()
+#endif
             || effects->hasActiveFullScreenEffect()
             || w->isFullScreen()
             || w->isDesktop()
@@ -724,23 +736,39 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
         QImage img(w_exgeo_scaled.width(), w_exgeo_scaled.height(), QImage::Format_ARGB32_Premultiplied);
         img.fill(Qt::white);
         GLTexture target = GLTexture(img.copy(0, 0, w_exgeo_scaled.width(), w_exgeo_scaled.height()), GL_TEXTURE_RECTANGLE);
+        
+#if KWIN_EFFECT_API_VERSION < 234
         GLRenderTarget renderTarget(target);
         GLRenderTarget::pushRenderTarget(&renderTarget);
+#else
+        GLFramebuffer renderTarget(&target);
+        GLFramebuffer::pushFramebuffer(&renderTarget);
+#endif
 
+#if KWIN_EFFECT_API_VERSION < 234
         WindowPaintData d(w);
+#else
+        WindowPaintData d;
+#endif
         d += QPoint(-w_exgeo.x(), -w_exgeo.y());
         QMatrix4x4 projection;
         projection.ortho(QRect(0, 0, w_exgeo.width(), w_exgeo.height()));
         d.setProjectionMatrix(projection);
 
         int mask = PAINT_WINDOW_TRANSFORMED | PAINT_WINDOW_TRANSLUCENT;
+#if KWIN_EFFECT_API_VERSION < 234
         GLVertexBuffer::setVirtualScreenGeometry(QRect(0, 0, w_exgeo_scaled.width(), w_exgeo_scaled.height()));
+#endif
 
         effects->drawWindow(w, mask, infiniteRegion(), d);
 
         //get shadow sampler from 2 corners
         shadow_tex = getTexRegions(w, r2, w_exgeo_scaled, NShad, true);
+#if KWIN_EFFECT_API_VERSION < 234
         GLRenderTarget::popRenderTarget();
+#else
+        GLFramebuffer::popFramebuffer();
+#endif
     }
 
     m_diff[w] = QList<GLTexture>();
@@ -763,8 +791,14 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
     for (int i = 0; i < n; ++i)
     {
         GLTexture target = GLTexture(GL_RGBA8, w_exgeo_scaled.size());
+        
+#if KWIN_EFFECT_API_VERSION < 234
         GLRenderTarget renderTarget(target);
         GLRenderTarget::pushRenderTarget(&renderTarget);
+#else
+        GLFramebuffer renderTarget(&target);
+        GLFramebuffer::pushFramebuffer(&renderTarget);
+#endif
 
         QMatrix4x4 mvp;
         mvp.ortho(QRect(0, 0, w_exgeo_scaled.width(), w_exgeo_scaled.height()));
@@ -791,7 +825,11 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
             m_diff[w].append(t);
             m_diff[w].append(t);
         }
+#if KWIN_EFFECT_API_VERSION < 234
         GLRenderTarget::popRenderTarget();
+#else
+        GLFramebuffer::popFramebuffer();
+#endif
     }
     sm->popShader();
 }
@@ -854,7 +892,11 @@ LightlyShadersEffect::enabledByDefault()
 bool
 LightlyShadersEffect::supported()
 {
+#if KWIN_EFFECT_API_VERSION < 234
     return effects->isOpenGLCompositing() && GLRenderTarget::supported();
+#else
+    return effects->isOpenGLCompositing() && GLFramebuffer::supported();
+#endif
 }
 
 #include "lightlyshaders.moc"
