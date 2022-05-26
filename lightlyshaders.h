@@ -56,11 +56,11 @@ private:
     void genRect();
 
     void fillRegion(const QRegion &reg, const QColor &c);
-    GLTexture copyTexSubImage(const QRect &geo, const QRect &rect);
-    QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, bool force=false);
+    GLTexture copyTexSubImage(const QRect &geo, const QRect &rect, qreal xTranslation=0.0, qreal yTranslation=0.0);
+    QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, qreal xTranslation=0.0, qreal yTranslation=0.0, bool force=false);
     void drawSquircle(QPainter *p, float size, int translate);
     QImage genMaskImg(int size, bool mask, bool outer_rect);
-    void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &empty_corners_tex, bool out_of_screen);
+    void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &empty_corners_tex, qreal xTranslation=0.0, qreal yTranslation=0.0, bool out_of_screen=false);
     QRect scale(const QRect rect);
 
     enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };

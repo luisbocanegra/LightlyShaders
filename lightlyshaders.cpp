@@ -34,18 +34,12 @@
 
 namespace KWin {
 
-#ifdef KWIN_PLUGIN_FACTORY_NAME
-KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(  LightlyShadersEffect,
-                                        "lightlyshaders.json",
-                                        return LightlyShadersEffect::supported();,
-                                        return LightlyShadersEffect::enabledByDefault();)
+#ifndef KWIN_PLUGIN_FACTORY_NAME
+KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(LightlyShadersFactory, LightlyShadersEffect, "lightlyshaders.json", return LightlyShadersEffect::supported();, return LightlyShadersEffect::enabledByDefault();)
 #else
-KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(  LightlyShadersFactory,
-                                        LightlyShadersEffect,
-                                        "lightlyshaders.json",
-                                        return LightlyShadersEffect::supported();,
-                                        return LightlyShadersEffect::enabledByDefault();)
+KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(LightlyShadersEffect, "lightlyshaders.json", return LightlyShadersEffect::supported();, return LightlyShadersEffect::enabledByDefault();)
 #endif
+
 
 LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
 {
@@ -375,9 +369,9 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     if (!m_shader->isValid()
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
-#if KWIN_EFFECT_API_VERSION < 234
+    /*#if KWIN_EFFECT_API_VERSION < 234
             || !w->isPaintingEnabled()
-#endif
+    #endif*/
             || effects->hasActiveFullScreenEffect()
             || w->isFullScreen()
             || w->isDesktop()
@@ -488,11 +482,6 @@ LightlyShadersEffect::paintScreen(int mask, const QRegion &region, ScreenPaintDa
             m_scale = scale*zoom;
         }
     }
-    
-    //qDebug() << scale;
-    /*if(m_scale == 1.0) qDebug() << "scale == 1.0";
-    if(m_scale > 1.0) qDebug() << "scale > 1.0";
-    if(m_scale < 1.0) qDebug() << "scale < 1.0";*/
 }
 
 
@@ -502,9 +491,9 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     if (!m_shader->isValid()
             || !w->isOnCurrentDesktop()
             || !m_managed.contains(w)
-#if KWIN_EFFECT_API_VERSION < 234
+        /*#if KWIN_EFFECT_API_VERSION < 234
             || !w->isPaintingEnabled()
-#endif
+        #endif*/
             || effects->hasActiveFullScreenEffect()
             || w->isFullScreen()
             || w->isDesktop()
@@ -520,6 +509,14 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     if(mask & PAINT_WINDOW_TRANSFORMED) {
         use_outline = false;
     }
+
+#if KWIN_EFFECT_API_VERSION < 234
+    const QRect screen = GLRenderTarget::virtualScreenGeometry();
+#else
+    const QRect screen = effects->renderTargetRect();
+#endif
+    qreal xTranslation = data.xTranslation() + screen.x();
+    qreal yTranslation = data.yTranslation() - effects->virtualScreenSize().height() + screen.height() + screen.y();
     
     //map the corners
     const QRect geo(w->frameGeometry());
@@ -537,7 +534,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     const QRect s(effects->virtualScreenGeometry());
     const QRect s_scaled = scale(s);
     //qDebug() << m_scale;
-    QList<GLTexture> empty_corners_tex = getTexRegions(w, big_rect_scaled, s_scaled, NTex, false);
+    QList<GLTexture> empty_corners_tex = getTexRegions(w, big_rect_scaled, s_scaled, NTex, xTranslation, yTranslation);
     
     //paint the actual window
     effects->paintWindow(w, mask, region, data);
@@ -551,7 +548,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     );
 
     //get shadows
-    getShadowDiffs(w, big_rect_scaled, empty_corners_tex, out_of_screen);
+    getShadowDiffs(w, big_rect_scaled, empty_corners_tex, xTranslation, yTranslation, out_of_screen);
 
     //Draw rounded corners with shadows    
     glEnable(GL_BLEND);
@@ -702,7 +699,7 @@ LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
 }
 
 void
-LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &empty_corners_tex, bool out_of_screen)
+LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &empty_corners_tex, qreal xTranslation, qreal yTranslation, bool out_of_screen)
 {
     // if we already have diff cache and there's no need to update it, return
     if(m_diff.contains(w) && (m_diff_update.contains(w) && !m_diff_update[w])) return;
@@ -712,6 +709,7 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
     const QRect w_exgeo = w->expandedGeometry();
     const QRect w_exgeo_scaled = scale(w_exgeo);
 
+    //map corners
     const QRect r4[NTex] =
     {
         QRect(QPoint(rect[TopLeft].x()-w_exgeo_scaled.x(),rect[TopLeft].y()-w_exgeo_scaled.y()), rect[TopLeft].size()),
@@ -730,45 +728,46 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
     QList<GLTexture> shadow_tex;
     //if window is not out of screen, get shadow samplers from the buffer for 4 corners
     if(!out_of_screen) {
-        shadow_tex = getTexRegions(w, rect, s_geo_scaled, NTex, true);
+        shadow_tex = getTexRegions(w, rect, s_geo_scaled, NTex, xTranslation, yTranslation, true);
     //else do offscreen render and get shadow samplers from 2 corners
     } else {
         QImage img(w_exgeo_scaled.width(), w_exgeo_scaled.height(), QImage::Format_ARGB32_Premultiplied);
         img.fill(Qt::white);
         GLTexture target = GLTexture(img.copy(0, 0, w_exgeo_scaled.width(), w_exgeo_scaled.height()), GL_TEXTURE_RECTANGLE);
         
-#if KWIN_EFFECT_API_VERSION < 234
+    #if KWIN_EFFECT_API_VERSION < 234
         GLRenderTarget renderTarget(target);
         GLRenderTarget::pushRenderTarget(&renderTarget);
-#else
+    #else
         GLFramebuffer renderTarget(&target);
         GLFramebuffer::pushFramebuffer(&renderTarget);
-#endif
+    #endif
 
-#if KWIN_EFFECT_API_VERSION < 234
+    #if KWIN_EFFECT_API_VERSION < 234
         WindowPaintData d(w);
-#else
+    #else
         WindowPaintData d;
-#endif
+    #endif
         d += QPoint(-w_exgeo.x(), -w_exgeo.y());
         QMatrix4x4 projection;
         projection.ortho(QRect(0, 0, w_exgeo.width(), w_exgeo.height()));
         d.setProjectionMatrix(projection);
 
         int mask = PAINT_WINDOW_TRANSFORMED | PAINT_WINDOW_TRANSLUCENT;
-#if KWIN_EFFECT_API_VERSION < 234
+
+    #if KWIN_EFFECT_API_VERSION < 234
         GLVertexBuffer::setVirtualScreenGeometry(QRect(0, 0, w_exgeo_scaled.width(), w_exgeo_scaled.height()));
-#endif
+    #endif
 
         effects->drawWindow(w, mask, infiniteRegion(), d);
 
         //get shadow sampler from 2 corners
-        shadow_tex = getTexRegions(w, r2, w_exgeo_scaled, NShad, true);
-#if KWIN_EFFECT_API_VERSION < 234
+        shadow_tex = getTexRegions(w, r2, w_exgeo_scaled, NShad, 0.0, 0.0, true);
+    #if KWIN_EFFECT_API_VERSION < 234
         GLRenderTarget::popRenderTarget();
-#else
+    #else
         GLFramebuffer::popFramebuffer();
-#endif
+    #endif
     }
 
     m_diff[w] = QList<GLTexture>();
@@ -792,13 +791,13 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
     {
         GLTexture target = GLTexture(GL_RGBA8, w_exgeo_scaled.size());
         
-#if KWIN_EFFECT_API_VERSION < 234
+    #if KWIN_EFFECT_API_VERSION < 234
         GLRenderTarget renderTarget(target);
         GLRenderTarget::pushRenderTarget(&renderTarget);
-#else
+    #else
         GLFramebuffer renderTarget(&target);
         GLFramebuffer::pushFramebuffer(&renderTarget);
-#endif
+    #endif
 
         QMatrix4x4 mvp;
         mvp.ortho(QRect(0, 0, w_exgeo_scaled.width(), w_exgeo_scaled.height()));
@@ -825,17 +824,17 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
             m_diff[w].append(t);
             m_diff[w].append(t);
         }
-#if KWIN_EFFECT_API_VERSION < 234
+    #if KWIN_EFFECT_API_VERSION < 234
         GLRenderTarget::popRenderTarget();
-#else
+    #else
         GLFramebuffer::popFramebuffer();
-#endif
+    #endif
     }
     sm->popShader();
 }
 
 QList<GLTexture>
-LightlyShadersEffect::getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, bool force)
+LightlyShadersEffect::getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, qreal xTranslation, qreal yTranslation, bool force)
 {
     QList<GLTexture> sample_tex;
 
@@ -846,14 +845,14 @@ LightlyShadersEffect::getTexRegions(EffectWindow *w, const QRect* rect, const QR
             continue;
         }
 
-        sample_tex.append(copyTexSubImage(geo, rect[i]));
+        sample_tex.append(copyTexSubImage(geo, rect[i], xTranslation, yTranslation));
     }
 
     return sample_tex;
 }
 
 GLTexture
-LightlyShadersEffect::copyTexSubImage(const QRect &geo, const QRect &rect)
+LightlyShadersEffect::copyTexSubImage(const QRect &geo, const QRect &rect, qreal xTranslation, qreal yTranslation)
 {
     QImage img(rect.width(), rect.height(), QImage::Format_ARGB32_Premultiplied);
     GLTexture t = GLTexture(img, GL_TEXTURE_RECTANGLE);
@@ -863,8 +862,8 @@ LightlyShadersEffect::copyTexSubImage(const QRect &geo, const QRect &rect)
         0, 
         0, 
         0, 
-        rect.x(),
-        geo.height() - rect.y() - rect.height(),
+        rect.x() - xTranslation,
+        geo.height() - rect.y() - rect.height() - yTranslation,
         rect.width(),
         rect.height()
     );
