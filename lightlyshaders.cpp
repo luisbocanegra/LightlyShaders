@@ -516,7 +516,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     const QRect screen = effects->renderTargetRect();
 #endif
     qreal xTranslation = data.xTranslation() + screen.x();
-    qreal yTranslation = data.yTranslation() - effects->virtualScreenSize().height() + screen.height() + screen.y();
+    qreal yTranslation = data.yTranslation() + effects->virtualScreenSize().height() - screen.height() - screen.y();
     
     //map the corners
     const QRect geo(w->frameGeometry());
