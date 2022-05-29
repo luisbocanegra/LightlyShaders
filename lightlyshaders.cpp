@@ -453,6 +453,16 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     }
 
     repaintRegion -= clip;
+
+    for (int i = 0; i < NTex; ++i)
+    {
+        if(!clip.contains(rect[i])) {
+            repaintRegion += rect[i];
+            clip -= rect[i];
+            clip_scaled -= scale(rect[i]);
+        }
+    }
+
 #if KWIN_EFFECT_API_VERSION < 234
     data.clip -= repaintRegion;
 #else
@@ -588,7 +598,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     sm->pushShader(m_shader);
     for (int i = 0; i < NTex; ++i)
     {
-        if(m_clip[w].contains(big_rect_scaled[i])) {
+        if(m_clip[w].contains(big_rect_scaled[i].adjusted(m_size_scaled, m_size_scaled, -m_size_scaled, -m_size_scaled))) {
             continue;
         }
 
@@ -624,7 +634,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         shader->setUniform(GLShader::ModulationConstant, QVector4D(o, o, o, o));
         for (int i = 0; i < NTex; ++i)
         {
-            if(m_clip[w].contains(big_rect_scaled[i])) {
+            if(m_clip[w].contains(big_rect_scaled[i].adjusted(m_size_scaled, m_size_scaled, -m_size_scaled, -m_size_scaled))) {
                 continue;
             }
 
@@ -655,7 +665,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
 
         for (int i = 0; i < NTex; ++i)
         {
-            if(m_clip[w].contains(rect_scaled[i])) {
+            if(m_clip[w].contains(rect_scaled[i].adjusted(m_size_scaled, m_size_scaled, -m_size_scaled, -m_size_scaled))) {
                 continue;
             }
 
@@ -868,7 +878,7 @@ LightlyShadersEffect::getTexRegions(EffectWindow *w, const QRect* rect, const QR
 
     for (int i = 0; i < nTex; ++i)
     {
-        if(m_clip[w].contains(rect[i]) && !force) {
+        if(m_clip[w].contains(rect[i].adjusted(m_size_scaled, m_size_scaled, -m_size_scaled, -m_size_scaled)) && !force) {
             sample_tex.append(GLTexture(GL_TEXTURE_RECTANGLE));
             continue;
         }
