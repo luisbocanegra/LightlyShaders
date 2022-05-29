@@ -407,8 +407,8 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         if(!window->isVisible()
             || window->isDeleted()
             || window->opacity() != 1.0
-//            || window->isUserMove()
-//            || window->isUserResize()
+            || window->isUserMove()
+            || window->isUserResize()
             || window->windowClass().contains("latte-dock", Qt::CaseInsensitive)
             || window->windowClass().contains("lattedock", Qt::CaseInsensitive)
             || window->windowClass().contains("peek", Qt::CaseInsensitive)
