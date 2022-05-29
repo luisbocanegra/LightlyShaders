@@ -422,9 +422,28 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
 
         bottom_w = false;
         if(window != w) {
-            const QRect r = window->frameGeometry().adjusted(m_size, m_size, -m_size, -m_size);
+            /*const QRect r = window->frameGeometry().adjusted(m_size, m_size, -m_size, -m_size);
             clip += r;
-            clip_scaled += scale(r);
+            clip_scaled += scale(r);*/
+
+            QRect w_geo = window->frameGeometry();
+
+            clip += w_geo;
+            clip_scaled += scale(w_geo);
+
+            const QRect w_rect[NTex] =
+            {
+                QRect(w_geo.topLeft()-QPoint(offset_decremented,offset_decremented), m_corner),
+                QRect(w_geo.topRight()-QPoint(m_size-offset_decremented, offset_decremented), m_corner),
+                QRect(w_geo.bottomRight()-QPoint(m_size-offset_decremented, m_size-offset_decremented), m_corner),
+                QRect(w_geo.bottomLeft()-QPoint(offset_decremented, m_size-offset_decremented), m_corner)
+            };
+
+            for (int i = 0; i < NTex; ++i)
+            {
+                clip -= w_rect[i];
+                clip_scaled -= scale(w_rect[i]);
+            }
         }
     }
 
