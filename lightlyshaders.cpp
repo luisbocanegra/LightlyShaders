@@ -111,7 +111,7 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
         }
 
         connect(effects, &EffectsHandler::windowAdded, this, &LightlyShadersEffect::windowAdded);
-        connect(effects, &EffectsHandler::windowClosed, this, &LightlyShadersEffect::windowClosed);
+        connect(effects, &EffectsHandler::windowDeleted, this, &LightlyShadersEffect::windowDeleted);
         connect(effects, &EffectsHandler::windowMaximizedStateChanged, this, &LightlyShadersEffect::windowMaximizedStateChanged);
 }
     else
@@ -139,7 +139,7 @@ LightlyShadersEffect::~LightlyShadersEffect()
 }
 
 void
-LightlyShadersEffect::windowClosed(EffectWindow *w)
+LightlyShadersEffect::windowDeleted(EffectWindow *w)
 {
     m_managed.removeOne(w);
     m_skipEffect.removeOne(w);
@@ -366,17 +366,7 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
 void
 LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, std::chrono::milliseconds time)
 {
-    if (!m_shader->isValid()
-            || !w->isOnCurrentDesktop()
-            || !m_managed.contains(w)
-    /*#if KWIN_EFFECT_API_VERSION < 234
-            || !w->isPaintingEnabled()
-    #endif*/
-            || effects->hasActiveFullScreenEffect()
-            || w->isFullScreen()
-            || w->isDesktop()
-            || w->isSpecialWindow()
-            || m_skipEffect.contains(w))
+    if (!isValidWindow(w))
     {
         effects->prePaintWindow(w, data, time);
         return;
@@ -424,6 +414,11 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
             || window->windowClass().contains("peek", Qt::CaseInsensitive)
             || (bottom_w && window != w)
         ) continue;
+
+        const void *addedGrab = window->data(WindowAddedGrabRole).value<void *>();
+        if (addedGrab) continue;
+        const void *unminimizedGrab = window->data(WindowUnminimizedGrabRole).value<void *>();
+        if (unminimizedGrab) continue;
 
         bottom_w = false;
         if(window != w) {
@@ -484,9 +479,8 @@ LightlyShadersEffect::paintScreen(int mask, const QRegion &region, ScreenPaintDa
     }
 }
 
-
-void
-LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, WindowPaintData &data)
+bool
+LightlyShadersEffect::isValidWindow(EffectWindow *w)
 {
     if (!m_shader->isValid()
             || !w->isOnCurrentDesktop()
@@ -498,8 +492,18 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
             || w->isFullScreen()
             || w->isDesktop()
             || w->isSpecialWindow()
-//            || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))
             || m_skipEffect.contains(w))
+    {
+        return false;
+    }
+    return true;
+}
+
+
+void
+LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, WindowPaintData &data)
+{
+    if (!isValidWindow(w) || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS)))
     {
         effects->paintWindow(w, mask, region, data);
         return;
@@ -530,14 +534,8 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         QRect(geo_scaled.bottomLeft()-QPoint(m_shadow_offset, m_size_scaled-1), size_scaled)
     };
 
-    //copy the empty corner regions
     const QRect s(effects->virtualScreenGeometry());
     const QRect s_scaled = scale(s);
-    //qDebug() << m_scale;
-    QList<GLTexture> empty_corners_tex = getTexRegions(w, big_rect_scaled, s_scaled, NTex, xTranslation, yTranslation);
-    
-    //paint the actual window
-    effects->paintWindow(w, mask, region, data);
 
     //check if one of the corners is out of screen
     bool out_of_screen = ! (
@@ -546,6 +544,17 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         && s_scaled.contains(big_rect_scaled[BottomRight], true)
         && s_scaled.contains(big_rect_scaled[BottomLeft], true)
     );
+
+    if(w->isDeleted() && out_of_screen) {
+        effects->paintWindow(w, mask, region, data);
+        return;
+    }
+
+    //copy the empty corner regions
+    QList<GLTexture> empty_corners_tex = getTexRegions(w, big_rect_scaled, s_scaled, NTex, xTranslation, yTranslation);
+
+    //paint the actual window
+    effects->paintWindow(w, mask, region, data);
 
     //get shadows
     getShadowDiffs(w, big_rect_scaled, empty_corners_tex, xTranslation, yTranslation, out_of_screen);

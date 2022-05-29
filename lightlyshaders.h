@@ -48,12 +48,14 @@ public:
 
 protected Q_SLOTS:
     void windowAdded(EffectWindow *window);
-    void windowClosed(EffectWindow *window);
-    void windowMaximizedStateChanged(EffectWindow *w, bool horizontal, bool vertical);
+    void windowDeleted(EffectWindow *window);
+    void windowMaximizedStateChanged(EffectWindow *window, bool horizontal, bool vertical);
 
 private:
     void genMasks();
     void genRect();
+
+    bool isValidWindow(EffectWindow *w);
 
     void fillRegion(const QRegion &reg, const QColor &c);
     GLTexture copyTexSubImage(const QRect &geo, const QRect &rect, qreal xTranslation=0.0, qreal yTranslation=0.0);
