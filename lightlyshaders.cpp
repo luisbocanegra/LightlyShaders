@@ -415,17 +415,8 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
             || (bottom_w && window != w)
         ) continue;
 
-        const void *addedGrab = window->data(WindowAddedGrabRole).value<void *>();
-        if (addedGrab) continue;
-        const void *unminimizedGrab = window->data(WindowUnminimizedGrabRole).value<void *>();
-        if (unminimizedGrab) continue;
-
         bottom_w = false;
         if(window != w) {
-            /*const QRect r = window->frameGeometry().adjusted(m_size, m_size, -m_size, -m_size);
-            clip += r;
-            clip_scaled += scale(r);*/
-
             QRect w_geo = window->frameGeometry();
 
             clip += w_geo;
@@ -447,20 +438,11 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         }
     }
 
+    repaintRegion -= clip;
+
     if(m_clip[w] != clip_scaled) {
         m_clip[w] = clip_scaled;
         m_diff_update[w] = true;
-    }
-
-    repaintRegion -= clip;
-
-    for (int i = 0; i < NTex; ++i)
-    {
-        if(!clip.contains(rect[i])) {
-            repaintRegion += rect[i];
-            clip -= rect[i];
-            clip_scaled -= scale(rect[i]);
-        }
     }
 
 #if KWIN_EFFECT_API_VERSION < 234
