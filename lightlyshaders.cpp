@@ -445,6 +445,10 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         m_diff_update[w] = true;
     }
 
+    if(w->isUserMove() || w->isUserResize()) {
+        repaintRegion += exp_geo;
+    }
+
 #if KWIN_EFFECT_API_VERSION < 234
     data.clip -= repaintRegion;
 #else
