@@ -52,6 +52,17 @@ protected Q_SLOTS:
     void windowMaximizedStateChanged(EffectWindow *window, bool horizontal, bool vertical);
 
 private:
+    struct LSWindowStruct
+    {
+        bool updateDiffTex;
+        bool skipEffect;
+        bool hasFadeInAnimation;
+        bool isManaged;
+        QRegion clip;
+        QList<GLTexture> diffTextures;
+        std::chrono::milliseconds animationTime;
+    };
+
     void genMasks();
     void genRect();
 
@@ -62,23 +73,21 @@ private:
     QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, qreal xTranslation=0.0, qreal yTranslation=0.0, bool force=false);
     void drawSquircle(QPainter *p, float size, int translate);
     QImage genMaskImg(int size, bool mask, bool outer_rect);
-    void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &empty_corners_tex, qreal xTranslation=0.0, qreal yTranslation=0.0, bool out_of_screen=false);
+    void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &emptyCornersTextures, qreal xTranslation=0.0, qreal yTranslation=0.0, bool outOfScreen=false);
     QRect scale(const QRect rect);
 
     enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
     enum { Top = 0, Bottom, NShad };
     GLTexture *m_tex[NTex];
     GLTexture *m_rect[NTex];
-    GLTexture *m_dark_rect[NTex];
-    int m_size, m_size_scaled, m_alpha, m_corners_type, m_squircle_ratio, m_roundness, m_shadow_offset;
-    bool m_outline, m_dark_theme, m_disabled_for_maximized;
+    GLTexture *m_darkRect[NTex];
+    int m_size, m_sizeScaled, m_alpha, m_cornersType, m_squircleRatio, m_roundness, m_shadowOffset;
+    bool m_outline, m_darkTheme, m_disabledForMaximized;
     QSize m_corner;
-    QMap<EffectWindow *, QRegion> m_clip;
-    QMap<EffectWindow *, bool> m_diff_update;
-    QMap<EffectWindow *, QList<GLTexture>> m_diff;
-    GLShader *m_shader, *m_diff_shader;
-    QList<EffectWindow *> m_managed, m_skipEffect;
+    GLShader *m_shader, *m_diffShader;
     qreal m_scale=1.0;
+
+    QMap<EffectWindow *, LSWindowStruct> m_windows;
 };
 
 } // namespace KWin
