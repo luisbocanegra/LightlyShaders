@@ -15,7 +15,9 @@
  - an additional outer dark outline; 
  - an option to make dark outline totally black (good with dark themes);
  - an option to disable plugin for maximized windows;
- - an option to use squircled corners instead of rounded (based on code from ZacharyTalis's [ShapeCorners fork](https://github.com/ZacharyTalis/ShapeCorners)).
+ - an option to use squircled corners instead of rounded (based on code from ZacharyTalis's [ShapeCorners fork](https://github.com/ZacharyTalis/ShapeCorners));
+ - support for scaling on Wayland (though, fractional scaling still may cause artifacts; only integer scaling works without issues for now);
+ - support for multimonitor setups on Wayland (setups with different scaling factor per monitor are not supported yet).
 
 
 # Warnings:
