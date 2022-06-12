@@ -17,7 +17,7 @@
  - an option to disable plugin for maximized windows;
  - an option to use squircled corners instead of rounded (based on code from ZacharyTalis's [ShapeCorners fork](https://github.com/ZacharyTalis/ShapeCorners));
  - support for scaling on Wayland (though, fractional scaling still may cause artifacts; only integer scaling works without issues for now);
- - support for multimonitor setups on Wayland (setups with different scaling factor per monitor are not supported yet).
+ - support for multimonitor setups on Wayland including setups with different scaling factor per monitor (still needs some work, see [issue #51](https://github.com/a-parhom/LightlyShaders/issues/51)).
 
 
 # Warnings:
