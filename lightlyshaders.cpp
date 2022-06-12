@@ -17,7 +17,6 @@
  *   Boston, MA 02110-1301, USA.
  */
 
-#include "dbus.h"
 #include "lightlyshaders.h"
 #include <QPainter>
 #include <QPainterPath>
@@ -29,7 +28,6 @@
 #include <kwinglutils.h>
 #include <QMatrix4x4>
 #include <KConfigGroup>
-#include <QtDBus/QDBusConnection>
 #include <QRegularExpression>
 
 namespace KWin {
@@ -43,13 +41,15 @@ KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(LightlyShadersEffect, "lightlyshaders.json
 
 LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
 {
-    new EffectAdaptor(this);
-    QDBusConnection::sessionBus().registerObject("/LightlyShaders", this);
-    for (int i = 0; i < NTex; ++i)
+    const auto screens = effects->screens();
+    for(EffectScreen *s : screens)
     {
-        m_tex[i] = 0;
-        m_rect[i] = 0;
-        m_darkRect[i] = 0;
+        for (int i = 0; i < NTex; ++i)
+        {
+            m_screens[s].tex[i] = 0;
+            m_screens[s].rect[i] = 0;
+            m_screens[s].darkRect[i] = 0;
+        }
     }
     reconfigure(ReconfigureAll);
 
@@ -124,14 +124,19 @@ LightlyShadersEffect::~LightlyShadersEffect()
         delete m_shader;
     if (m_diffShader)
         delete m_diffShader;
-    for (int i = 0; i < NTex; ++i)
+
+    const auto screens = effects->screens();
+    for(EffectScreen *s : screens)
     {
-        if (m_tex[i])
-            delete m_tex[i];
-        if (m_rect[i])
-            delete m_rect[i];
-        if (m_darkRect[i])
-            delete m_darkRect[i];
+        for (int i = 0; i < NTex; ++i)
+        {
+            if (m_screens[s].tex[i])
+                delete m_screens[s].tex[i];
+            if (m_screens[s].rect[i])
+                delete m_screens[s].rect[i];
+            if (m_screens[s].darkRect[i])
+                delete m_screens[s].darkRect[i];
+        }
     }
 
     m_windows.clear();
@@ -286,58 +291,58 @@ LightlyShadersEffect::genMaskImg(int size, bool mask, bool outer_rect)
 }
 
 void
-LightlyShadersEffect::genMasks()
+LightlyShadersEffect::genMasks(EffectScreen *s)
 {
     for (int i = 0; i < NTex; ++i)
-        if (m_tex[i])
-            delete m_tex[i];
+        if (m_screens[s].tex[i])
+            delete m_screens[s].tex[i];
 
-    int size = m_sizeScaled + m_shadowOffset;
+    int size = m_screens[s].sizeScaled + m_shadowOffset;
 
     QImage img = genMaskImg(size, true, false);
     
-    m_tex[TopLeft] = new GLTexture(img.copy(0, 0, size, size), GL_TEXTURE_RECTANGLE);
-    m_tex[TopRight] = new GLTexture(img.copy(size, 0, size, size), GL_TEXTURE_RECTANGLE);
-    m_tex[BottomRight] = new GLTexture(img.copy(size, size, size, size), GL_TEXTURE_RECTANGLE);
-    m_tex[BottomLeft] = new GLTexture(img.copy(0, size, size, size), GL_TEXTURE_RECTANGLE);
+    m_screens[s].tex[TopLeft] = new GLTexture(img.copy(0, 0, size, size), GL_TEXTURE_RECTANGLE);
+    m_screens[s].tex[TopRight] = new GLTexture(img.copy(size, 0, size, size), GL_TEXTURE_RECTANGLE);
+    m_screens[s].tex[BottomRight] = new GLTexture(img.copy(size, size, size, size), GL_TEXTURE_RECTANGLE);
+    m_screens[s].tex[BottomLeft] = new GLTexture(img.copy(0, size, size, size), GL_TEXTURE_RECTANGLE);
 }
 
 void
-LightlyShadersEffect::genRect()
+LightlyShadersEffect::genRect(EffectScreen *s)
 {
     for (int i = 0; i < NTex; ++i) {
-        if (m_rect[i])
-            delete m_rect[i];
-        if (m_darkRect[i])
-            delete m_darkRect[i];
+        if (m_screens[s].rect[i])
+            delete m_screens[s].rect[i];
+        if (m_screens[s].darkRect[i])
+            delete m_screens[s].darkRect[i];
     }
 
-    int size = m_sizeScaled + (m_shadowOffset-1);
+    int size = m_screens[s].sizeScaled + (m_shadowOffset-1);
 
     QImage img = genMaskImg(size, false, false);
 
-    m_rect[TopLeft] = new GLTexture(img.copy(0, 0, size, size));
-    m_rect[TopRight] = new GLTexture(img.copy(size, 0, size, size));
-    m_rect[BottomRight] = new GLTexture(img.copy(size, size, size, size));
-    m_rect[BottomLeft] = new GLTexture(img.copy(0, size, size, size));
+    m_screens[s].rect[TopLeft] = new GLTexture(img.copy(0, 0, size, size));
+    m_screens[s].rect[TopRight] = new GLTexture(img.copy(size, 0, size, size));
+    m_screens[s].rect[BottomRight] = new GLTexture(img.copy(size, size, size, size));
+    m_screens[s].rect[BottomLeft] = new GLTexture(img.copy(0, size, size, size));
 
-    size = m_sizeScaled + m_shadowOffset;
+    size = m_screens[s].sizeScaled + m_shadowOffset;
     QImage img2 = genMaskImg(size, false, true);
 
-    m_darkRect[TopLeft] = new GLTexture(img2.copy(0, 0, size, size));
-    m_darkRect[TopRight] = new GLTexture(img2.copy(size, 0, size, size));
-    m_darkRect[BottomRight] = new GLTexture(img2.copy(size, size, size, size));
-    m_darkRect[BottomLeft] = new GLTexture(img2.copy(0, size, size, size));
+    m_screens[s].darkRect[TopLeft] = new GLTexture(img2.copy(0, 0, size, size));
+    m_screens[s].darkRect[TopRight] = new GLTexture(img2.copy(size, 0, size, size));
+    m_screens[s].darkRect[BottomRight] = new GLTexture(img2.copy(size, size, size, size));
+    m_screens[s].darkRect[BottomLeft] = new GLTexture(img2.copy(0, size, size, size));
 }
 
 void
-LightlyShadersEffect::setRoundness(const int r)
+LightlyShadersEffect::setRoundness(const int r, EffectScreen *s)
 {
     m_size = r;
-    m_sizeScaled = r*m_scale;
+    m_screens[s].sizeScaled = r*m_screens[s].scale;
     m_corner = QSize(m_size+(m_shadowOffset-1), m_size+(m_shadowOffset-1));
-    genMasks();
-    genRect();
+    genMasks(s);
+    genRect(s);
 }
 
 void
@@ -356,11 +361,12 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
     if(m_shadowOffset>=m_roundness) {
         m_shadowOffset = m_roundness-1;
     }
-    int roundness = m_roundness;
-    if(m_scale!=1.0) {
-        roundness /= m_scale;
+
+    const auto screens = effects->screens();
+    for(EffectScreen *s : screens)
+    {
+        setRoundness(m_roundness, s);
     }
-    setRoundness(roundness);
 }
 
 void
@@ -381,12 +387,14 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         return;
     }
 
-    const QRect s(effects->virtualScreenGeometry());
+    EffectScreen *s = w->screen();
+
+    const QRect s_geo(effects->virtualScreenGeometry());
     const QRect geo(w->frameGeometry());
     const QRegion exp_geo(w->expandedGeometry());
     const QRegion shadow = exp_geo - geo;
 
-    if(shadow.intersects(data.paint) && geo.width() != s.width()) {
+    if(shadow.intersects(data.paint) && geo.width() != s_geo.width()) {
         m_windows[w].updateDiffTex = true;
         //qDebug() << "shadow repainted";
     }
@@ -410,6 +418,8 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     QRegion clip = QRegion();
     QRegion clip_scaled = QRegion();
 
+    QSize size(m_size + m_shadowOffset, m_size + m_shadowOffset);
+
     const auto stackingOrder = effects->stackingOrder();
     bool bottom_w = true;
     for (EffectWindow *window : stackingOrder) {
@@ -421,36 +431,59 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
             || window->windowClass().contains("latte-dock", Qt::CaseInsensitive)
             || window->windowClass().contains("lattedock", Qt::CaseInsensitive)
             || window->windowClass().contains("peek", Qt::CaseInsensitive)
-            || (bottom_w && window != w)
         ) continue;
 
         const void *addedGrab = window->data(WindowAddedGrabRole).value<void *>();
         if ((addedGrab && m_windows[window].hasFadeInAnimation != false) || !m_windows.contains(window)) continue;
 
-        bottom_w = false;
         if(window != w) {
             QRect w_geo = window->frameGeometry();
 
-            clip += w_geo;
-            clip_scaled += scale(w_geo);
-
             const QRect w_rect[NTex] =
             {
-                QRect(w_geo.topLeft()-QPoint(offset_decremented,offset_decremented), m_corner),
-                QRect(w_geo.topRight()-QPoint(m_size-offset_decremented, offset_decremented), m_corner),
-                QRect(w_geo.bottomRight()-QPoint(m_size-offset_decremented, m_size-offset_decremented), m_corner),
-                QRect(w_geo.bottomLeft()-QPoint(offset_decremented, m_size-offset_decremented), m_corner)
+                QRect(w_geo.topLeft()-QPoint(m_shadowOffset,m_shadowOffset), size),
+                QRect(w_geo.topRight()-QPoint(m_size, m_shadowOffset), size),
+                QRect(w_geo.bottomRight()-QPoint(m_size, m_size), size),
+                QRect(w_geo.bottomLeft()-QPoint(m_shadowOffset, m_size), size)
             };
+
+            if (bottom_w)
+            {
+
+                for (int i = 0; i < NTex; ++i)
+                {
+                    if(geo.intersects(w_rect[i]) && !geo.contains(w_rect[i]) ) {
+                        clip -= w_rect[i];
+                        clip_scaled -= scale(w_rect[i], s);
+                        repaintRegion += w_rect[i];
+                    }
+                }
+                continue;
+            }
+
+            clip += w_geo;
+            clip_scaled += scale(w_geo, s);
 
             for (int i = 0; i < NTex; ++i)
             {
                 clip -= w_rect[i];
-                clip_scaled -= scale(w_rect[i]);
+                clip_scaled -= scale(w_rect[i], s);
             }
+        } else {
+            bottom_w = false;
         }
     }
 
     repaintRegion -= clip;
+
+    for (int i = 0; i < NTex; ++i)
+    {
+        if(clip.intersects(rect[i]) && !clip.contains(rect[i])) {
+            clip -= rect[i];
+            clip_scaled -= scale(rect[i], s);
+            repaintRegion += rect[i];
+        }
+    }
 
     if(m_windows[w].clip != clip_scaled) {
         m_windows[w].clip = clip_scaled;
@@ -471,11 +504,11 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     if(shadow.isEmpty()) {
         data.paint = infiniteRegion();
         GLTexture tex = GLTexture(GL_TEXTURE_RECTANGLE);
-        m_windows[w].diffTextures = QList<GLTexture>();
+        m_windows[w].diffTextures[s] = QList<GLTexture>();
         m_windows[w].updateDiffTex = false;
         for (int i = 0; i < NTex; ++i)
         {
-            m_windows[w].diffTextures.append(tex);
+            m_windows[w].diffTextures[s].append(tex);
         }
     }
 
@@ -485,30 +518,29 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
 void
 LightlyShadersEffect::paintScreen(int mask, const QRegion &region, ScreenPaintData &data)
 {
-    effects->paintScreen(mask, region, data);
+    EffectScreen *s = data.screen();
 #if KWIN_EFFECT_API_VERSION < 234
     qreal scale = GLRenderTarget::virtualScreenScale();
 #else
     qreal scale = effects->renderTargetScale();
 #endif
     qreal zoom = data.xScale();
-    if(scale*zoom != m_scale) {
-        if(zoom == 1.0 && scale>m_scale) {
-            m_scale = scale*zoom;
-            int roundness = m_roundness;
-            if(m_scale!=1.0) {
-                roundness /= m_scale;
-            }
-            setRoundness(roundness);
-        } else {
-            m_scale = scale*zoom;
-        }
+    if(scale*zoom != m_screens[s].scale) {
+        m_screens[s].scale = scale*zoom;
+        setRoundness(m_roundness, s);
     }
+
+    effects->paintScreen(mask, region, data);
 }
 
 bool
 LightlyShadersEffect::isValidWindow(EffectWindow *w)
 {
+#if KWIN_EFFECT_API_VERSION < 234
+    const QRect screen = GLRenderTarget::virtualScreenGeometry();
+#else
+    const QRect screen = effects->renderTargetRect();
+#endif
     if (!m_shader->isValid()
             || !w->isOnCurrentDesktop()
             || !m_windows[w].isManaged
@@ -519,7 +551,8 @@ LightlyShadersEffect::isValidWindow(EffectWindow *w)
             || w->isFullScreen()
             || w->isDesktop()
             || w->isSpecialWindow()
-            || m_windows[w].skipEffect)
+            || m_windows[w].skipEffect
+            || !screen.intersects(w->frameGeometry()))
     {
         return false;
     }
@@ -536,40 +569,39 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         return;
     }
 
+    EffectScreen *s = w->screen();
+
     bool use_outline = m_outline;
     if(mask & PAINT_WINDOW_TRANSFORMED) {
         use_outline = false;
     }
 
 #if KWIN_EFFECT_API_VERSION < 234
-    const QRect screen = GLRenderTarget::virtualScreenGeometry();
+    const QRect screen = scale(GLRenderTarget::virtualScreenGeometry(), s);
 #else
-    const QRect screen = effects->renderTargetRect();
+    const QRect screen = scale(effects->renderTargetRect(), s);
 #endif
-    qreal xTranslation = data.xTranslation() + screen.x();
-    qreal yTranslation = data.yTranslation() + effects->virtualScreenSize().height() - screen.height() - screen.y();
+    qreal xTranslation = /*data.xTranslation() +*/ screen.x();
+    qreal yTranslation = /*data.yTranslation() +*/ effects->virtualScreenSize().height() - screen.height() - screen.y();
     
     //map the corners
     const QRect geo(w->frameGeometry());
-    const QRect geo_scaled = scale(geo);
-    const QSize size_scaled(m_sizeScaled+m_shadowOffset, m_sizeScaled+m_shadowOffset);
+    const QRect geo_scaled = scale(geo, s);
+    const QSize size_scaled(m_screens[s].sizeScaled+m_shadowOffset, m_screens[s].sizeScaled+m_shadowOffset);
     const QRect big_rect_scaled[NTex] =
     {
         QRect(geo_scaled.topLeft()-QPoint(m_shadowOffset,m_shadowOffset), size_scaled),
-        QRect(geo_scaled.topRight()-QPoint(m_sizeScaled-1, m_shadowOffset), size_scaled),
-        QRect(geo_scaled.bottomRight()-QPoint(m_sizeScaled-1, m_sizeScaled-1), size_scaled),
-        QRect(geo_scaled.bottomLeft()-QPoint(m_shadowOffset, m_sizeScaled-1), size_scaled)
+        QRect(geo_scaled.topRight()-QPoint(m_screens[s].sizeScaled-1, m_shadowOffset), size_scaled),
+        QRect(geo_scaled.bottomRight()-QPoint(m_screens[s].sizeScaled-1, m_screens[s].sizeScaled-1), size_scaled),
+        QRect(geo_scaled.bottomLeft()-QPoint(m_shadowOffset, m_screens[s].sizeScaled-1), size_scaled)
     };
-
-    const QRect s(effects->virtualScreenGeometry());
-    const QRect s_scaled = scale(s);
 
     //check if one of the corners is out of screen
     bool out_of_screen = ! (
-        s_scaled.contains(big_rect_scaled[TopLeft], true)
-        && s_scaled.contains(big_rect_scaled[TopRight], true)
-        && s_scaled.contains(big_rect_scaled[BottomRight], true)
-        && s_scaled.contains(big_rect_scaled[BottomLeft], true)
+        screen.contains(big_rect_scaled[TopLeft], true)
+        && screen.contains(big_rect_scaled[TopRight], true)
+        && screen.contains(big_rect_scaled[BottomRight], true)
+        && screen.contains(big_rect_scaled[BottomLeft], true)
     );
 
     if(w->isDeleted() && out_of_screen) {
@@ -577,8 +609,10 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         return;
     }
 
+    const QRect s_geo(effects->virtualScreenGeometry());
+
     //copy the empty corner regions
-    QList<GLTexture> empty_corners_tex = getTexRegions(w, big_rect_scaled, s_scaled, NTex, xTranslation, yTranslation);
+    QList<GLTexture> empty_corners_tex = getTexRegions(w, big_rect_scaled, s_geo, NTex, xTranslation, yTranslation);
 
     //paint the actual window
     effects->paintWindow(w, mask, region, data);
@@ -596,27 +630,27 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     sm->pushShader(m_shader);
     for (int i = 0; i < NTex; ++i)
     {
-        if(m_windows[w].clip.contains(big_rect_scaled[i].adjusted(m_sizeScaled, m_sizeScaled, -m_sizeScaled, -m_sizeScaled))) {
+        if(m_windows[w].clip.contains(big_rect_scaled[i].adjusted(m_screens[s].sizeScaled, m_screens[s].sizeScaled, -m_screens[s].sizeScaled, -m_screens[s].sizeScaled))) {
             continue;
         }
 
         QMatrix4x4 mvp = data.screenProjectionMatrix();
-        mvp.scale(1.0/m_scale);
+        mvp.scale(1.0/m_screens[s].scale);
         mvp.translate(big_rect_scaled[i].x(), big_rect_scaled[i].y());
         QVector2D samplerSize = QVector2D(big_rect_scaled[i].width(), big_rect_scaled[i].height());
         m_shader->setUniform(mvpMatrixLocation, mvp);
         m_shader->setUniform(samplerSizeLocation, samplerSize);
         m_shader->setUniform(flipShadowLocation, out_of_screen && (i==1 || i==2));
         glActiveTexture(GL_TEXTURE2);
-        m_tex[i]->bind();
+        m_screens[s].tex[i]->bind();
         glActiveTexture(GL_TEXTURE1);
-        m_windows[w].diffTextures[i].bind();
+        m_windows[w].diffTextures[s][i].bind();
         glActiveTexture(GL_TEXTURE0);
         empty_corners_tex[i].bind();
         empty_corners_tex[i].render(region, big_rect_scaled[i]);
         empty_corners_tex[i].unbind();
-        m_windows[w].diffTextures[i].unbind();
-        m_tex[i]->unbind();
+        m_windows[w].diffTextures[s][i].unbind();
+        m_screens[s].tex[i]->unbind();
     }
     sm->popShader();
 
@@ -632,30 +666,30 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
         shader->setUniform(GLShader::ModulationConstant, QVector4D(o, o, o, o));
         for (int i = 0; i < NTex; ++i)
         {
-            if(m_windows[w].clip.contains(big_rect_scaled[i].adjusted(m_sizeScaled, m_sizeScaled, -m_sizeScaled, -m_sizeScaled))) {
+            if(m_windows[w].clip.contains(big_rect_scaled[i].adjusted(m_screens[s].sizeScaled, m_screens[s].sizeScaled, -m_screens[s].sizeScaled, -m_screens[s].sizeScaled))) {
                 continue;
             }
 
             QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
-            modelViewProjection.scale(1.0/m_scale);
+            modelViewProjection.scale(1.0/m_screens[s].scale);
             modelViewProjection.translate(big_rect_scaled[i].x(), big_rect_scaled[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
-            m_darkRect[i]->bind();
-            m_darkRect[i]->render(region, big_rect_scaled[i]);
-            m_darkRect[i]->unbind();
+            m_screens[s].darkRect[i]->bind();
+            m_screens[s].darkRect[i]->render(region, big_rect_scaled[i]);
+            m_screens[s].darkRect[i]->unbind();
         
         }
         ShaderManager::instance()->popShader();
 
         //Inner corners
         int offset_decremented = m_shadowOffset-1;
-        const QSize i_size = QSize(m_sizeScaled+offset_decremented, m_sizeScaled+offset_decremented);
+        const QSize i_size = QSize(m_screens[s].sizeScaled+offset_decremented, m_screens[s].sizeScaled+offset_decremented);
         const QRect rect_scaled[NTex] =
         {
             QRect(geo_scaled.topLeft()-QPoint(offset_decremented,offset_decremented), i_size),
-            QRect(geo_scaled.topRight()-QPoint(m_sizeScaled-1, offset_decremented), i_size),
-            QRect(geo_scaled.bottomRight()-QPoint(m_sizeScaled-1, m_sizeScaled-1), i_size),
-            QRect(geo_scaled.bottomLeft()-QPoint(offset_decremented, m_sizeScaled-1), i_size)
+            QRect(geo_scaled.topRight()-QPoint(m_screens[s].sizeScaled-1, offset_decremented), i_size),
+            QRect(geo_scaled.bottomRight()-QPoint(m_screens[s].sizeScaled-1, m_screens[s].sizeScaled-1), i_size),
+            QRect(geo_scaled.bottomLeft()-QPoint(offset_decremented, m_screens[s].sizeScaled-1), i_size)
         };
 
         shader = ShaderManager::instance()->pushShader(ShaderTrait::MapTexture|ShaderTrait::UniformColor|ShaderTrait::Modulate);
@@ -663,25 +697,25 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
 
         for (int i = 0; i < NTex; ++i)
         {
-            if(m_windows[w].clip.contains(rect_scaled[i].adjusted(m_sizeScaled, m_sizeScaled, -m_sizeScaled, -m_sizeScaled))) {
+            if(m_windows[w].clip.contains(rect_scaled[i].adjusted(m_screens[s].sizeScaled, m_screens[s].sizeScaled, -m_screens[s].sizeScaled, -m_screens[s].sizeScaled))) {
                 continue;
             }
 
             QMatrix4x4 modelViewProjection = data.screenProjectionMatrix();
-            modelViewProjection.scale(1.0/m_scale);
+            modelViewProjection.scale(1.0/m_screens[s].scale);
             modelViewProjection.translate(rect_scaled[i].x(), rect_scaled[i].y());
             shader->setUniform("modelViewProjectionMatrix", modelViewProjection);
-            m_rect[i]->bind();
-            m_rect[i]->render(region, rect_scaled[i]);
-            m_rect[i]->unbind();
+            m_screens[s].rect[i]->bind();
+            m_screens[s].rect[i]->render(region, rect_scaled[i]);
+            m_screens[s].rect[i]->unbind();
         }
         ShaderManager::instance()->popShader();
 
-        QRect geo_scaled = scale(geo);
+        QRect geo_scaled = scale(geo, s);
         
         QRegion reg = geo_scaled;
         QMatrix4x4 mvp = data.screenProjectionMatrix();
-        mvp.scale(1.0/m_scale);
+        mvp.scale(1.0/m_screens[s].scale);
 
         //Outline
         shader = ShaderManager::instance()->pushShader(ShaderTrait::UniformColor);
@@ -737,13 +771,15 @@ LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
 void
 LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &emptyCornersTextures, qreal xTranslation, qreal yTranslation, bool outOfScreen)
 {
+    EffectScreen *s = w->screen();
+
     // if we already have diff cache and there's no need to update it, return
-    if(m_windows[w].diffTextures.length() > 0 && !m_windows[w].updateDiffTex) return;
+    if(m_windows[w].diffTextures[s].length() > 0 && !m_windows[w].updateDiffTex) return;
 
     //else do 1 offscreen paint if needed and get the cache for topleft and bottomleft corners
     m_windows[w].updateDiffTex = false;
     const QRect w_exgeo = w->expandedGeometry();
-    const QRect w_exgeo_scaled = scale(w_exgeo);
+    const QRect w_exgeo_scaled = scale(w_exgeo, s);
 
     //map corners
     const QRect r4[NTex] =
@@ -760,11 +796,10 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
     };
 
     const QRect s_geo = effects->virtualScreenGeometry();
-    const QRect s_geo_scaled = scale(s_geo);
     QList<GLTexture> shadow_tex;
     //if window is not out of screen, get shadow samplers from the buffer for 4 corners
     if(!outOfScreen) {
-        shadow_tex = getTexRegions(w, rect, s_geo_scaled, NTex, xTranslation, yTranslation, true);
+        shadow_tex = getTexRegions(w, rect, s_geo, NTex, xTranslation, yTranslation, true);
     //else do offscreen render and get shadow samplers from 2 corners
     } else {
         QImage img(w_exgeo_scaled.width(), w_exgeo_scaled.height(), QImage::Format_ARGB32_Premultiplied);
@@ -806,7 +841,7 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
     #endif
     }
 
-    m_windows[w].diffTextures = QList<GLTexture>();
+    m_windows[w].diffTextures[s] = QList<GLTexture>();
 
     const int mvpMatrixLocation = m_diffShader ->uniformLocation("modelViewProjectionMatrix");
     const int cornerNumberLocation = m_diffShader->uniformLocation("corner_number");
@@ -853,12 +888,12 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
         shadow_tex[i].unbind();
         if(!outOfScreen) {
             emptyCornersTextures[i].unbind();
-            m_windows[w].diffTextures.append(copyTexSubImage(w_exgeo_scaled, r[i]));
+            m_windows[w].diffTextures[s].append(copyTexSubImage(w_exgeo_scaled, r[i]));
         } else {
             white_tex.unbind();
             GLTexture t = copyTexSubImage(w_exgeo_scaled, r[i]);
-            m_windows[w].diffTextures.append(t);
-            m_windows[w].diffTextures.append(t);
+            m_windows[w].diffTextures[s].append(t);
+            m_windows[w].diffTextures[s].append(t);
         }
     #if KWIN_EFFECT_API_VERSION < 234
         GLRenderTarget::popRenderTarget();
@@ -874,9 +909,11 @@ LightlyShadersEffect::getTexRegions(EffectWindow *w, const QRect* rect, const QR
 {
     QList<GLTexture> sample_tex;
 
+    EffectScreen *s = w->screen();
+
     for (int i = 0; i < nTex; ++i)
     {
-        if(m_windows[w].clip.contains(rect[i].adjusted(m_sizeScaled, m_sizeScaled, -m_sizeScaled, -m_sizeScaled)) && !force) {
+        if(m_windows[w].clip.contains(rect[i].adjusted(m_screens[s].sizeScaled, m_screens[s].sizeScaled, -m_screens[s].sizeScaled, -m_screens[s].sizeScaled)) && !force) {
             sample_tex.append(GLTexture(GL_TEXTURE_RECTANGLE));
             continue;
         }
@@ -908,13 +945,13 @@ LightlyShadersEffect::copyTexSubImage(const QRect &geo, const QRect &rect, qreal
 }
 
 QRect
-LightlyShadersEffect::scale(const QRect rect)
+LightlyShadersEffect::scale(const QRect rect, EffectScreen *s)
 {
     return QRect(
-        rect.x()*m_scale,
-        rect.y()*m_scale,
-        rect.width()*m_scale,
-        rect.height()*m_scale
+        rect.x()*m_screens[s].scale,
+        rect.y()*m_screens[s].scale,
+        rect.width()*m_screens[s].scale,
+        rect.height()*m_screens[s].scale
     );
 }
 

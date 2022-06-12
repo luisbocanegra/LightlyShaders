@@ -13,7 +13,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH} ${ECM_KDE_MODULE_D
 find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS
     Gui
     Core
-    DBus
     UiTools
     Widgets
     X11Extras
@@ -80,7 +79,7 @@ if (NOT EFFECTS_H OR NOT KWIN_GLUTILS OR NOT KWIN_EFFECTS OR NOT OPENGL)
     message(FATAL_ERROR "cant continue")
 endif (NOT EFFECTS_H OR NOT KWIN_GLUTILS OR NOT KWIN_EFFECTS OR NOT OPENGL)
 
-add_library(${LIGHTLYSHADERS} MODULE lightlyshaders.cpp dbus.h)
+add_library(${LIGHTLYSHADERS} MODULE lightlyshaders.cpp)
 
 target_link_libraries(${LIGHTLYSHADERS}
     PUBLIC

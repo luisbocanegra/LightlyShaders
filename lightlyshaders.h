@@ -37,7 +37,7 @@ public:
     static bool supported();
     static bool enabledByDefault();
     
-    void setRoundness(const int r);
+    void setRoundness(const int r, EffectScreen *s);
     void reconfigure(ReconfigureFlags flags) override;
     void paintScreen(int mask, const QRegion &region, ScreenPaintData &data) override;
     void prePaintWindow(EffectWindow* w, WindowPrePaintData& data, std::chrono::milliseconds time) override;
@@ -52,6 +52,9 @@ protected Q_SLOTS:
     void windowMaximizedStateChanged(EffectWindow *window, bool horizontal, bool vertical);
 
 private:
+    enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
+    enum { Top = 0, Bottom, NShad };
+
     struct LSWindowStruct
     {
         bool updateDiffTex;
@@ -59,12 +62,21 @@ private:
         bool hasFadeInAnimation;
         bool isManaged;
         QRegion clip;
-        QList<GLTexture> diffTextures;
+        QMap<EffectScreen *, QList<GLTexture>> diffTextures;
         std::chrono::milliseconds animationTime;
     };
 
-    void genMasks();
-    void genRect();
+    struct LSScreenStruct
+    {
+        qreal scale=1.0;
+        int sizeScaled;
+        GLTexture *tex[NTex];
+        GLTexture *rect[NTex];
+        GLTexture *darkRect[NTex];
+    };
+
+    void genMasks(EffectScreen *s);
+    void genRect(EffectScreen *s);
 
     bool isValidWindow(EffectWindow *w);
 
@@ -74,19 +86,14 @@ private:
     void drawSquircle(QPainter *p, float size, int translate);
     QImage genMaskImg(int size, bool mask, bool outer_rect);
     void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &emptyCornersTextures, qreal xTranslation=0.0, qreal yTranslation=0.0, bool outOfScreen=false);
-    QRect scale(const QRect rect);
+    QRect scale(const QRect rect, EffectScreen *s);
 
-    enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
-    enum { Top = 0, Bottom, NShad };
-    GLTexture *m_tex[NTex];
-    GLTexture *m_rect[NTex];
-    GLTexture *m_darkRect[NTex];
-    int m_size, m_sizeScaled, m_alpha, m_cornersType, m_squircleRatio, m_roundness, m_shadowOffset;
+    int m_size, m_alpha, m_cornersType, m_squircleRatio, m_roundness, m_shadowOffset;
     bool m_outline, m_darkTheme, m_disabledForMaximized;
-    QSize m_corner;
     GLShader *m_shader, *m_diffShader;
-    qreal m_scale=1.0;
+    QSize m_corner;
 
+    QMap<EffectScreen *, LSScreenStruct> m_screens;
     QMap<EffectWindow *, LSWindowStruct> m_windows;
 };
 
