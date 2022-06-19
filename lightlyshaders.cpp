@@ -182,6 +182,7 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
             || w->windowClass().contains("latte-dock", Qt::CaseInsensitive)
             || w->windowClass().contains("lattedock", Qt::CaseInsensitive)
             || w->windowClass().contains("plank", Qt::CaseInsensitive)
+            || w->windowClass().contains("cairo-dock", Qt::CaseInsensitive)
             || w->windowClass().contains("albert", Qt::CaseInsensitive)
             || w->windowClass().contains("ulauncher", Qt::CaseInsensitive)
             || w->windowClass().contains("ksplash", Qt::CaseInsensitive)
@@ -455,6 +456,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
             || window->windowClass().contains("latte-dock", Qt::CaseInsensitive)
             || window->windowClass().contains("lattedock", Qt::CaseInsensitive)
             || window->windowClass().contains("plank", Qt::CaseInsensitive)
+            || window->windowClass().contains("cairo-dock", Qt::CaseInsensitive)
             || window->windowClass().contains("peek", Qt::CaseInsensitive)
         ) continue;
 
