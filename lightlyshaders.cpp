@@ -53,6 +53,9 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
             m_screens[s].rect[i] = 0;
             m_screens[s].darkRect[i] = 0;
         }
+        if (effects->waylandDisplay() == nullptr) {
+            break;
+        }
     }
     reconfigure(ReconfigureAll);
 
@@ -142,6 +145,9 @@ LightlyShadersEffect::~LightlyShadersEffect()
                 delete m_screens[s].rect[i];
             if (m_screens[s].darkRect[i])
                 delete m_screens[s].darkRect[i];
+        }
+        if (effects->waylandDisplay() == nullptr) {
+            break;
         }
     }
 
@@ -377,6 +383,10 @@ LightlyShadersEffect::reconfigure(ReconfigureFlags flags)
             s = nullptr;
         }
         setRoundness(m_roundness, s);
+
+        if (effects->waylandDisplay() == nullptr) {
+            break;
+        }
     }
 }
 
