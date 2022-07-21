@@ -78,7 +78,7 @@ private:
     void genMasks(EffectScreen *s);
     void genRect(EffectScreen *s);
 
-    bool isValidWindow(EffectWindow *w);
+    bool isValidWindow(EffectWindow *w, int mask=0);
 
     void fillRegion(const QRegion &reg, const QColor &c);
     GLTexture copyTexSubImage(const QRect &geo, const QRect &rect, qreal xTranslation=0.0, qreal yTranslation=0.0);

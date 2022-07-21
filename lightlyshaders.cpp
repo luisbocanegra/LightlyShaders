@@ -590,7 +590,7 @@ LightlyShadersEffect::paintScreen(int mask, const QRegion &region, ScreenPaintDa
 }
 
 bool
-LightlyShadersEffect::isValidWindow(EffectWindow *w)
+LightlyShadersEffect::isValidWindow(EffectWindow *w, int mask)
 {
 #if KWIN_EFFECT_API_VERSION < 234
     const QRect screen = GLRenderTarget::virtualScreenGeometry();
@@ -598,7 +598,7 @@ LightlyShadersEffect::isValidWindow(EffectWindow *w)
     const QRect screen = effects->renderTargetRect();
 #endif
     if (!m_shader->isValid()
-            || !w->isOnCurrentDesktop()
+            || (!w->isOnCurrentDesktop() && !(mask & PAINT_WINDOW_TRANSFORMED))
             || !m_windows[w].isManaged
         /*#if KWIN_EFFECT_API_VERSION < 234
             || !w->isPaintingEnabled()
@@ -608,7 +608,8 @@ LightlyShadersEffect::isValidWindow(EffectWindow *w)
             || w->isDesktop()
             || w->isSpecialWindow()
             || m_windows[w].skipEffect
-            || !screen.intersects(w->frameGeometry()))
+            || (!screen.intersects(w->frameGeometry()) && !(mask & PAINT_WINDOW_TRANSFORMED))
+        )
     {
         return false;
     }
@@ -619,7 +620,7 @@ LightlyShadersEffect::isValidWindow(EffectWindow *w)
 void
 LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, WindowPaintData &data)
 {
-    if (!isValidWindow(w) /*|| (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))*/)
+    if (!isValidWindow(w, mask) /*|| (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))*/)
     {
         effects->paintWindow(w, mask, region, data);
         return;
