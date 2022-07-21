@@ -603,7 +603,7 @@ LightlyShadersEffect::isValidWindow(EffectWindow *w)
         /*#if KWIN_EFFECT_API_VERSION < 234
             || !w->isPaintingEnabled()
         #endif*/
-            || effects->hasActiveFullScreenEffect()
+            //|| effects->hasActiveFullScreenEffect()
             || w->isFullScreen()
             || w->isDesktop()
             || w->isSpecialWindow()
@@ -619,7 +619,7 @@ LightlyShadersEffect::isValidWindow(EffectWindow *w)
 void
 LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, WindowPaintData &data)
 {
-    if (!isValidWindow(w) || (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS)))
+    if (!isValidWindow(w) /*|| (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))*/)
     {
         effects->paintWindow(w, mask, region, data);
         return;
@@ -631,9 +631,9 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     }
 
     bool use_outline = m_outline;
-    if(mask & PAINT_WINDOW_TRANSFORMED) {
+    /*if(mask & PAINT_WINDOW_TRANSFORMED) {
         use_outline = false;
-    }
+    }*/
 
 #if KWIN_EFFECT_API_VERSION < 234
     const QRect screen = scale(GLRenderTarget::virtualScreenGeometry(), m_screens[s].scale);
@@ -646,7 +646,8 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     //qDebug() << m_xTranslation;
     
     //map the corners
-    const QRect geo(w->frameGeometry());
+    QRect geo(w->frameGeometry());
+    geo.translate(data.xTranslation(), data.yTranslation());
     const QRect geo_scaled = scale(geo, m_screens[s].scale*m_zoom);
     const QSize size_scaled(m_screens[s].sizeScaled+m_shadowOffset*m_zoom, m_screens[s].sizeScaled+m_shadowOffset*m_zoom);
     const QRect big_rect_scaled[NTex] =
@@ -676,7 +677,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
             !screen_scaled.contains(big_rect_scaled[BottomLeft], true)
             &&screen_scaled.intersects(big_rect_scaled[BottomLeft])
         )
-    );
+    ) && !(mask & PAINT_WINDOW_TRANSFORMED);
 
     if(w->isDeleted() && out_of_screen) {
         effects->paintWindow(w, mask, region, data);
