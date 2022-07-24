@@ -119,6 +119,7 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
         connect(effects, &EffectsHandler::windowAdded, this, &LightlyShadersEffect::windowAdded);
         connect(effects, &EffectsHandler::windowDeleted, this, &LightlyShadersEffect::windowDeleted);
         connect(effects, &EffectsHandler::windowMaximizedStateChanged, this, &LightlyShadersEffect::windowMaximizedStateChanged);
+        connect(effects, &EffectsHandler::windowUnminimized, this, &LightlyShadersEffect::windowUnminimized);
 }
     else
         qDebug() << "LightlyShaders: no valid shaders found! LightlyShaders will not work.";
@@ -220,6 +221,12 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
     QRect maximized_area = effects->clientArea(MaximizeArea, w);
     if (maximized_area == w->frameGeometry() && m_disabledForMaximized)
         m_windows[w].skipEffect = true;
+}
+
+void
+LightlyShadersEffect::windowUnminimized(EffectWindow *w) 
+{
+    m_windows[w].hasRestoreAnimation = true;
 }
 
 void 
@@ -400,7 +407,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         } else if((time - m_windows[w].animationTime) > std::chrono::milliseconds(150)) { // hardcode fade in animation duration as 150 milliseconds
             m_windows[w].hasFadeInAnimation = false;
         }
-    } 
+    }
 
     if (!isValidWindow(w))
     {
@@ -599,6 +606,8 @@ LightlyShadersEffect::isValidWindow(EffectWindow *w, int mask)
 #endif
     if (!m_shader->isValid()
             || (!w->isOnCurrentDesktop() && !(mask & PAINT_WINDOW_TRANSFORMED))
+            || w->isMinimized()
+            || m_windows[w].hasRestoreAnimation
             || !m_windows[w].isManaged
         /*#if KWIN_EFFECT_API_VERSION < 234
             || !w->isPaintingEnabled()
@@ -620,6 +629,11 @@ LightlyShadersEffect::isValidWindow(EffectWindow *w, int mask)
 void
 LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, WindowPaintData &data)
 {
+    if(m_windows[w].hasRestoreAnimation && !(mask & PAINT_WINDOW_TRANSFORMED))
+    {
+        m_windows[w].hasRestoreAnimation = false;
+    }
+
     if (!isValidWindow(w, mask) /*|| (mask & (PAINT_WINDOW_TRANSFORMED|PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS))*/)
     {
         effects->paintWindow(w, mask, region, data);
@@ -694,7 +708,7 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     effects->paintWindow(w, mask, region, data);
 
     //get shadows
-    getShadowDiffs(w, big_rect_scaled, empty_corners_tex, xTranslation, yTranslation, out_of_screen);
+    getShadowDiffs(w, big_rect_scaled, empty_corners_tex, xTranslation, yTranslation, out_of_screen, mask);
 
     //Draw rounded corners with shadows    
     glEnable(GL_BLEND);
@@ -845,7 +859,7 @@ LightlyShadersEffect::fillRegion(const QRegion &reg, const QColor &c)
 }
 
 void
-LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &emptyCornersTextures, qreal xTranslation, qreal yTranslation, bool outOfScreen)
+LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &emptyCornersTextures, qreal xTranslation, qreal yTranslation, bool outOfScreen, int w_mask)
 {
     EffectScreen *s = w->screen();
     if (effects->waylandDisplay() == nullptr) {
@@ -853,7 +867,7 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
     }
 
     // if we already have diff cache and there's no need to update it, return
-    if(m_windows[w].diffTextures[s].length() > 0 && !m_windows[w].updateDiffTex) return;
+    if(m_windows[w].diffTextures[s].length() > 0 && (!m_windows[w].updateDiffTex || (w_mask & PAINT_WINDOW_TRANSFORMED))) return;
 
     //else do 1 offscreen paint if needed and get the cache for topleft and bottomleft corners
     m_windows[w].updateDiffTex = false;

@@ -50,6 +50,7 @@ protected Q_SLOTS:
     void windowAdded(EffectWindow *window);
     void windowDeleted(EffectWindow *window);
     void windowMaximizedStateChanged(EffectWindow *window, bool horizontal, bool vertical);
+    void windowUnminimized(EffectWindow *window);
 
 private:
     enum { TopLeft = 0, TopRight, BottomRight, BottomLeft, NTex };
@@ -60,6 +61,7 @@ private:
         bool updateDiffTex;
         bool skipEffect;
         bool hasFadeInAnimation;
+        bool hasRestoreAnimation;
         bool isManaged;
         QRegion clip;
         QMap<EffectScreen *, QList<GLTexture>> diffTextures;
@@ -85,7 +87,7 @@ private:
     QList<GLTexture> getTexRegions(EffectWindow *w, const QRect* rect, const QRect &geo, int nTex, qreal xTranslation=0.0, qreal yTranslation=0.0, bool force=false);
     void drawSquircle(QPainter *p, float size, int translate);
     QImage genMaskImg(int size, bool mask, bool outer_rect);
-    void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &emptyCornersTextures, qreal xTranslation=0.0, qreal yTranslation=0.0, bool outOfScreen=false);
+    void getShadowDiffs(EffectWindow *w, const QRect* rect, QList<GLTexture> &emptyCornersTextures, qreal xTranslation=0.0, qreal yTranslation=0.0, bool outOfScreen=false, int w_mask=0);
     QRect scale(const QRect rect, qreal scaleFactor);
 
     int m_size, m_alpha, m_cornersType, m_squircleRatio, m_roundness, m_shadowOffset;
