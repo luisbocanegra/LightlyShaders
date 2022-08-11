@@ -470,6 +470,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
             || window->opacity() != 1.0
             || window->isUserMove()
             || window->isUserResize()
+            || window->windowClass().contains("plasmashell", Qt::CaseInsensitive)
             || window->windowClass().contains("latte-dock", Qt::CaseInsensitive)
             || window->windowClass().contains("lattedock", Qt::CaseInsensitive)
             || window->windowClass().contains("plank", Qt::CaseInsensitive)
