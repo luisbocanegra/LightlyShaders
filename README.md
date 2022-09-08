@@ -5,32 +5,25 @@
     - [Ukrainian army](https://bank.gov.ua/en/about/support-the-armed-forces)
     - [Humanitarian aid to Ukraine](https://bank.gov.ua/en/about/humanitarian-aid-to-ukraine)
 
+![default](https://github.com/a-parhom/LightlyShaders/blob/master/screenshot.png)
 
- ![default](https://github.com/a-parhom/LightlyShaders/blob/master/screenshot.png)
- This is a fork of Luwx's [LightlyShaders](https://github.com/Luwx/LightlyShaders), which in turn is a fork of [ShapeCorners](https://sourceforge.net/projects/shapecorners/). 
+# LightlyShaders 2.0
+ This is a fork of Luwx's [LightlyShaders](https://github.com/Luwx/LightlyShaders), which in turn is a fork of [ShapeCorners](https://sourceforge.net/projects/shapecorners/).  
 
- This fork fixes the infamous [bug](https://bugs.kde.org/show_bug.cgi?id=395725) with blurred corners, as well as the [bug](https://github.com/matinlotfali/KDE-Rounded-Corners/issues/2) with cut out shadows, though in a somehow hacky way. 
- 
- Also, it adds the following functionality:
- - an additional outer dark outline; 
- - an option to make dark outline totally black (good with dark themes);
- - an option to disable plugin for maximized windows;
- - an option to use squircled corners instead of rounded (based on code from ZacharyTalis's [ShapeCorners fork](https://github.com/ZacharyTalis/ShapeCorners));
- - support for scaling on Wayland (though, fractional scaling still may cause artifacts; only integer scaling works without issues for now);
- - support for multimonitor setups on Wayland including setups with different scaling factor per monitor (still needs some work, see [issue #51](https://github.com/a-parhom/LightlyShaders/issues/51)).
+ This version has almost zero performance impact, as well as correctly works with stock Plasma effects:
 
+ ![gif](https://github.com/a-parhom/LightlyShaders/blob/master/lightly_shaders_2.0.gif)
 
 # Warnings:
 
-## 1. This effect is basically a hack!
-Due to the changes introduced in Plasma 5.23 there is no way to draw original shadows under rounded corners any more. 
+## 1. This is a work in progress branch!
+Not all functionality, that was present in previous version is currently implemented. Outline and Wayland support are not working yet. **This branch may contain bugs!**
 
-In order to work around that, this fork uses a hack that tries to restore the shadow in the cut out regions based on the data from the closest regions with shadows. 
+## 2. This version heavily relies on window decorations, that correctly work with Plasma 5.25 "korner bug" fix!
+Currently I can confirm this effect correctly works with **SierraBreezeEnhanced** or default **Breeze** (though Breeze has hardcoded corner radius at 5px).
 
-Because of this it may work differently with different themes, corner radiuses or shadow settings. **Your mileage may vary.**
-
-## 2. This effect can be resource-hungry!
-Thanks to recent changes the performance of this plugin has improved. But depending on your hardware, you still can have performance hit.
+## 3. This version will only work with GPUs, that support OpenGL 3.0 and above!
+OpenGL 2.1 is not supported any more due to relying on textureSize function, which is only present in OpenGL 3.0 and above.
 
 
 # Dependencies:
