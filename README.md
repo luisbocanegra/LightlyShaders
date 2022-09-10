@@ -17,7 +17,7 @@
 # Warnings:
 
 ## 1. This is a work in progress branch!
-Not all functionality, that was present in previous version is currently implemented. Outline and Wayland support are not working yet. **This branch may contain bugs!**
+Not all functionality, that was present in previous version is currently implemented. Outline is not working yet. **This branch may contain bugs!**
 
 ## 2. This version heavily relies on window decorations, that correctly work with Plasma 5.25 "korner bug" fix!
 Currently I can confirm this effect correctly works with **SierraBreezeEnhanced** or default **Breeze** (though Breeze has hardcoded corner radius at 5px).
