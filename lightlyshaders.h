@@ -84,7 +84,6 @@ private:
     bool m_outline, m_darkTheme, m_disabledForMaximized;
     GLShader *m_shader;
     QSize m_corner;
-    qreal m_zoom=1.0, m_xTranslation=0, m_yTranslation=0;
 
     QMap<EffectScreen *, LSScreenStruct> m_screens;
     QMap<EffectWindow *, LSWindowStruct> m_windows;

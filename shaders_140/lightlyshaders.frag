@@ -8,9 +8,11 @@ uniform sampler2D radius_bottom_left_sampler;
 
 uniform vec2 expanded_size;
 uniform vec2 frame_size;
+uniform vec2 content_size;
 uniform vec2 csd_shadow_offset;
 uniform int radius;
 uniform int shadow_sample_offset;
+uniform bool is_wayland;
 
 uniform mat4 modelViewProjectionMatrix;
 
@@ -22,11 +24,7 @@ out vec4 fragColor;
 
 vec4 shapeWindow(vec4 tex, vec4 texCorner)
 {
-    if(texCorner.a == 1) {
-        discard;
-    } else {
-        return vec4(tex.rgb*(1-texCorner.a), min(1-texCorner.a, tex.a));
-    }
+    return vec4(tex.rgb*(1-texCorner.a), min(1-texCorner.a, tex.a));
 }
 
 vec4 shapeCSDShadowWindow(float start_x, float start_y, vec4 tex, vec4 texCorner)
@@ -145,15 +143,19 @@ void main(void)
             outColor = tex;
         }
     //Window shadow or titlebar
-    } else if(texture_size != frame_size) {
+    } else if((is_wayland && texture_size != content_size) || (!is_wayland && texture_size != frame_size)) {
         outColor = tex;
     //Window content
     } else {
+        float diff_y = 0.0;
+        if(is_wayland) {
+            diff_y = frame_size.y - content_size.y;
+        }
         //Left side
         if (coord0.x < radius) {
             //Top left corner
-            if (coord0.y < radius) {
-                texCorner = texture(radius_top_left_sampler, vec2((coord0.x+shadow_sample_offset)/(radius+shadow_sample_offset), (coord0.y+shadow_sample_offset)/(radius+shadow_sample_offset)));
+            if (coord0.y+diff_y < radius) {
+                texCorner = texture(radius_top_left_sampler, vec2((coord0.x+shadow_sample_offset)/(radius+shadow_sample_offset), (coord0.y+diff_y+shadow_sample_offset)/(radius+shadow_sample_offset)));
                 
                 outColor = shapeWindow(tex, texCorner);
             //Bottom left corner
@@ -168,8 +170,8 @@ void main(void)
         //Right side
         } else if (coord0.x > texture_size.x - radius) {
             //Top right corner
-            if (coord0.y < radius) {
-                texCorner = texture(radius_top_right_sampler, vec2(1 - (texture_size.x - coord0.x+shadow_sample_offset)/(radius+shadow_sample_offset), (coord0.y+shadow_sample_offset)/(radius+shadow_sample_offset)));
+            if (coord0.y+diff_y < radius) {
+                texCorner = texture(radius_top_right_sampler, vec2(1 - (texture_size.x - coord0.x+shadow_sample_offset)/(radius+shadow_sample_offset), (coord0.y+diff_y+shadow_sample_offset)/(radius+shadow_sample_offset)));
                 
                 outColor = shapeWindow(tex, texCorner);
             //Bottom right corner
