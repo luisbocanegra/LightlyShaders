@@ -30,7 +30,18 @@ In order to work around that, this fork uses a hack that tries to restore the sh
 Because of this it may work differently with different themes, corner radiuses or shadow settings. **Your mileage may vary.**
 
 ## 2. This effect can be resource-hungry!
-Thanks to recent changes the performance of this plugin has improved. But depending on your hardware, you still can have performance hit.
+Thanks to recent changes the performance of this plugin has improved. But depending on your hardware, you still can have performance hit. Or you can try and test the new upcoming version wich has almost no performance impact.
+
+
+# Try upcoming version
+If you use Plasma 5.25 and your GPU supports OpenGL 3.1, you can try the upcoming version 2.0 from the [branch v2.0](https://github.com/a-parhom/LightlyShaders/tree/v2.0).
+
+It is fully compatible with stock Plasma effects, including Wobbly windows, and has no performance impact.
+
+You will have to use it together with window decorations that deal with "korner bug", I recommend **SierraBreezeEnhanced**.
+
+## Caution!
+It is a work-in-progress branch! Things may break! Some things may not be implemented yet.
 
 
 # Dependencies:
