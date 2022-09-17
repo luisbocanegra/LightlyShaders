@@ -58,16 +58,18 @@ private:
     {
         bool skipEffect;
         bool isManaged;
+        bool hasDecoration = false;
+        QVector2D shadowTexSize = QVector2D(0,0);
     };
 
     struct LSScreenStruct
     {
         qreal scale=1.0;
         int sizeScaled;
-        GLTexture *tex[NTex];
-        GLTexture *rect[NTex];
-        GLTexture *darkRect[NTex];
-        QRegion *mask[NTex];
+        GLTexture *maskTex;
+        GLTexture *lightOutlineTex;
+        GLTexture *darkOutlineTex;
+        QRegion *maskRegion[NTex];
     };
 
     void genMasks(EffectScreen *s);
