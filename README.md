@@ -20,7 +20,7 @@
 **This branch may contain bugs!**
 
 ## 2. This version heavily relies on window decorations, that correctly work with Plasma 5.25 "korner bug" fix!
-Currently I can confirm this effect correctly works with **SierraBreezeEnhanced** or default **Breeze** (though Breeze has hardcoded corner radius at 5px).
+Currently I can confirm this effect correctly works with **SierraBreezeEnhanced** or default **Breeze** (though Breeze has hardcoded corner radius at 5px). You have to make sure, that your radius settings in window decorations match with settings in LightlyShaders.
 
 ## 3. This version will only work with GPUs, that support OpenGL 3.1 and above!
 OpenGL versions below 3.1 are not supported any more due to relying on textureSize function.
@@ -28,7 +28,7 @@ OpenGL versions below 3.1 are not supported any more due to relying on textureSi
 
 # Dependencies:
  
-Plasma >= 5.23 (X11 and Wayland supported).
+Plasma >= 5.25 (X11 and Wayland supported).
  
 Debian based (Ubuntu, Kubuntu, KDE Neon):
 ```
