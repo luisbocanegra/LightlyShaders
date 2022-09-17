@@ -41,7 +41,7 @@ It is fully compatible with stock Plasma effects, including Wobbly windows, and 
 You will have to use it together with window decorations that deal with "korner bug", I recommend **SierraBreezeEnhanced**.
 
 ## Caution!
-It is a work-in-progress branch! Things may break! Some things may not be implemented yet.
+It is a work-in-progress branch! Things may break!
 
 
 # Dependencies:
