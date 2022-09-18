@@ -492,7 +492,7 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         w->setData(WindowBlurBehindRole, blur_region);
     }
 
-    if(w->decoration() != nullptr) {
+    if(w->decoration() != nullptr && w->decoration()->shadow() != nullptr ) {
         const QImage shadow = w->decoration()->shadow()->shadow();
         if(shadow.width() != m_windows[w].shadowTexSize.x() || shadow.height() != m_windows[w].shadowTexSize.y()) {
             m_windows[w].shadowTexSize.setX(shadow.width());
