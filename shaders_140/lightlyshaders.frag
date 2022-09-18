@@ -365,7 +365,7 @@ void main(void)
             }
         }
     //Window shadow or titlebar
-    } else if((is_wayland && texture_size != content_size) || (!is_wayland && texture_size != frame_size)) {
+    } else if(((is_wayland && texture_size != content_size) || (!is_wayland && texture_size != frame_size)) && !(is_wayland && texture_size == frame_size)) {
         outColor = tex;
 
         //Titlebar outline
