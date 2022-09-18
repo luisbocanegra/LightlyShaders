@@ -89,7 +89,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2((coord0.x + shadow_sample_offset -1 )/mask_tex_size, (coord0.y + shadow_sample_offset -1 )/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
 
                     //Dark outline
@@ -108,7 +108,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2((coord0.x + shadow_sample_offset -1 )/mask_tex_size, 1 - (frame_size.y - coord0.y + shadow_sample_offset -1 )/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
 
                     //Dark outline
@@ -147,7 +147,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2(1 - (frame_size.x - coord0.x + shadow_sample_offset -1 )/mask_tex_size, (coord0.y + shadow_sample_offset -1 )/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
 
                     //Dark outline
@@ -166,7 +166,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2(1 - (frame_size.x - coord0.x + shadow_sample_offset -1 )/mask_tex_size, 1 - (frame_size.y - coord0.y + shadow_sample_offset -1 )/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
 
                     //Dark outline
@@ -232,7 +232,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2((coord0.x - csd_shadow_offset.x + shadow_sample_offset)/mask_tex_size, (coord0.y - csd_shadow_offset.y + shadow_sample_offset)/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
 
                     //Dark outline
@@ -253,7 +253,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2((coord0.x - csd_shadow_offset.x + shadow_sample_offset)/mask_tex_size, (coord0.y - frame_size.y - csd_shadow_offset.y - shadow_sample_offset)/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
 
                     //Dark outline
@@ -294,7 +294,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2((coord0.x - frame_size.x - csd_shadow_offset.x - shadow_sample_offset)/mask_tex_size, (coord0.y - csd_shadow_offset.y + shadow_sample_offset)/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
 
                     //Dark outline
@@ -315,7 +315,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2((coord0.x - frame_size.x - csd_shadow_offset.x - shadow_sample_offset)/mask_tex_size, (coord0.y - frame_size.y - csd_shadow_offset.y - shadow_sample_offset)/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
 
                     //Dark outline
@@ -381,7 +381,7 @@ void main(void)
                     if(draw_outline) {
                         vec4 texOutline = texture(light_outline_sampler, vec2((coord0.x+shadow_sample_offset-1)/mask_tex_size, (coord0.y+shadow_sample_offset-1)/mask_tex_size));
                         if(texOutline.a > 0) {
-                            outColor = mix(outColor, texOutline, outline_strength);
+                            outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                         }
                     }
                 }
@@ -397,7 +397,7 @@ void main(void)
                     if(draw_outline) {
                         vec4 texOutline = texture(light_outline_sampler, vec2(1 - (frame_size.x - coord0.x+1+shadow_sample_offset)/mask_tex_size, (coord0.y-1+shadow_sample_offset)/mask_tex_size));
                         if(texOutline.a > 0) {
-                            outColor = mix(outColor, texOutline, outline_strength);
+                            outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                         }
                     }
                 }
@@ -499,7 +499,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2((coord0.x+shadow_sample_offset)/mask_tex_size, (coord0.y+diff_y+shadow_sample_offset)/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
                 }
             //Bottom left corner
@@ -511,7 +511,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2((coord0.x+shadow_sample_offset)/mask_tex_size, 1 - (texture_size.y - coord0.y+shadow_sample_offset)/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
                 }
             //Center
@@ -534,7 +534,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2(1 - (texture_size.x - coord0.x+shadow_sample_offset)/mask_tex_size, (coord0.y+diff_y+shadow_sample_offset)/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
                 }
             //Bottom right corner
@@ -546,7 +546,7 @@ void main(void)
                 if(draw_outline) {
                     vec4 texOutline = texture(light_outline_sampler, vec2(1 - (texture_size.x - coord0.x+shadow_sample_offset)/mask_tex_size, 1 - (texture_size.y - coord0.y+shadow_sample_offset)/mask_tex_size));
                     if(texOutline.a > 0) {
-                        outColor = mix(outColor, texOutline, outline_strength);
+                        outColor = mix(outColor, vec4(texOutline.rgb, outColor.a), outline_strength*texOutline.a);
                     }
                 }
             //Center
