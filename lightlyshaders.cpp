@@ -98,7 +98,9 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect()
         const int outline_strength = m_shader->uniformLocation("outline_strength");
         const int draw_outline = m_shader->uniformLocation("draw_outline");
         const int dark_theme = m_shader->uniformLocation("dark_theme");
+        const int scale = m_shader->uniformLocation("scale");
         ShaderManager::instance()->pushShader(m_shader.get());
+        m_shader->setUniform(scale, 15);
         m_shader->setUniform(dark_theme, 14);
         m_shader->setUniform(draw_outline, 13);
         m_shader->setUniform(outline_strength, 12);
@@ -595,6 +597,7 @@ LightlyShadersEffect::drawWindow(EffectWindow *w, int mask, const QRegion &regio
     const int outlineStrengthLocation = m_shader->uniformLocation("outline_strength");
     const int drawOutlineLocation = m_shader->uniformLocation("draw_outline");
     const int darkThemeLocation = m_shader->uniformLocation("dark_theme");
+    const int scaleLocation = m_shader->uniformLocation("scale");
     ShaderManager *sm = ShaderManager::instance();
     sm->pushShader(m_shader.get());
 
@@ -614,6 +617,7 @@ LightlyShadersEffect::drawWindow(EffectWindow *w, int mask, const QRegion &regio
     m_shader->setUniform(outlineStrengthLocation, float(m_alpha)/100);
     m_shader->setUniform(drawOutlineLocation, m_outline);
     m_shader->setUniform(darkThemeLocation, m_darkTheme);
+    m_shader->setUniform(scaleLocation, float(m_screens[s].scale));
     glActiveTexture(GL_TEXTURE3);
     m_screens[s].darkOutlineTex->bind();
     glActiveTexture(GL_TEXTURE2);
