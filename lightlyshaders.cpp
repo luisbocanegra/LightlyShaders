@@ -42,7 +42,7 @@ KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(LightlyShadersEffect, "lightlyshaders.json
 #endif
 
 
-LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
+LightlyShadersEffect::LightlyShadersEffect() : Effect()
 {
     const auto screens = effects->screens();
     for(EffectScreen *s : screens)
@@ -77,7 +77,7 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
     }
 
     QByteArray frag = file_shader.readAll();
-    m_shader = ShaderManager::instance()->generateCustomShader(ShaderTrait::MapTexture, QByteArray(), frag);
+    m_shader = std::unique_ptr<GLShader>(ShaderManager::instance()->generateCustomShader(ShaderTrait::MapTexture, QByteArray(), frag));
     file_shader.close();
 
     if (m_shader->isValid())
@@ -98,7 +98,7 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
         const int outline_strength = m_shader->uniformLocation("outline_strength");
         const int draw_outline = m_shader->uniformLocation("draw_outline");
         const int dark_theme = m_shader->uniformLocation("dark_theme");
-        ShaderManager::instance()->pushShader(m_shader);
+        ShaderManager::instance()->pushShader(m_shader.get());
         m_shader->setUniform(dark_theme, 14);
         m_shader->setUniform(draw_outline, 13);
         m_shader->setUniform(outline_strength, 12);
@@ -132,9 +132,6 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
 
 LightlyShadersEffect::~LightlyShadersEffect()
 {
-    if (m_shader)
-        delete m_shader;
-
     const auto screens = effects->screens();
     for(EffectScreen *s : screens)
     {
@@ -220,7 +217,7 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
     m_windows[w].isManaged = true;
     m_windows[w].skipEffect = false;
 
-    QRect maximized_area = effects->clientArea(MaximizeArea, w);
+    QRectF maximized_area = effects->clientArea(MaximizeArea, w);
     if (maximized_area == w->frameGeometry() && m_disabledForMaximized)
         m_windows[w].skipEffect = true;
 }
@@ -439,10 +436,10 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         s = nullptr;
     } 
 
-    const QRect geo(w->frameGeometry());
+    const QRectF geo(w->frameGeometry());
     for (int corner = 0; corner < NTex; ++corner)
     {
-        QRegion reg = QRegion(scale(m_screens[s].maskRegion[corner]->boundingRect(), m_screens[s].scale));
+        QRegion reg = QRegion(scale(m_screens[s].maskRegion[corner]->boundingRect(), m_screens[s].scale).toRect());
         switch(corner) {
             case TopLeft:
                 reg.translate(geo.x()-m_shadowOffset, geo.y()-m_shadowOffset);
@@ -511,9 +508,9 @@ bool
 LightlyShadersEffect::isValidWindow(EffectWindow *w, int mask)
 {
 #if KWIN_EFFECT_API_VERSION < 234
-    const QRect screen = GLRenderTarget::virtualScreenGeometry();
+    const QRectF screen = QRectF(GLRenderTarget::virtualScreenGeometry());
 #else
-    const QRect screen = effects->renderTargetRect();
+    const QRectF screen = QRectF(effects->renderTargetRect());
 #endif
     if (!m_shader->isValid()
             //|| (!w->isOnCurrentDesktop() && !(mask & PAINT_WINDOW_TRANSFORMED))
@@ -549,13 +546,13 @@ LightlyShadersEffect::drawWindow(EffectWindow *w, int mask, const QRegion &regio
         s = nullptr;
     }
 
-    QRect geo(w->frameGeometry());
-    QRect exp_geo(w->expandedGeometry());
-    QRect contents_geo(w->contentsRect());
+    QRectF geo(w->frameGeometry());
+    QRectF exp_geo(w->expandedGeometry());
+    QRectF contents_geo(w->contentsRect());
     //geo.translate(data.xTranslation(), data.yTranslation());
-    const QRect geo_scaled = scale(geo, m_screens[s].scale);
-    const QRect contents_geo_scaled = scale(contents_geo, m_screens[s].scale);
-    const QRect exp_geo_scaled = scale(exp_geo, m_screens[s].scale);
+    const QRectF geo_scaled = scale(geo, m_screens[s].scale);
+    const QRectF contents_geo_scaled = scale(contents_geo, m_screens[s].scale);
+    const QRectF exp_geo_scaled = scale(exp_geo, m_screens[s].scale);
 
     if(data.opacity() == 1.0) {
         for (int corner = 0; corner < NTex; ++corner)
@@ -599,9 +596,9 @@ LightlyShadersEffect::drawWindow(EffectWindow *w, int mask, const QRegion &regio
     const int drawOutlineLocation = m_shader->uniformLocation("draw_outline");
     const int darkThemeLocation = m_shader->uniformLocation("dark_theme");
     ShaderManager *sm = ShaderManager::instance();
-    sm->pushShader(m_shader);
+    sm->pushShader(m_shader.get());
 
-    data.shader = m_shader;
+    data.shader = m_shader.get();
 
     bool is_wayland = effects->waylandDisplay() != nullptr;
     //qDebug() << geo_scaled.width() << geo_scaled.height();
@@ -631,10 +628,10 @@ LightlyShadersEffect::drawWindow(EffectWindow *w, int mask, const QRegion &regio
     sm->popShader();
 }
 
-QRect
-LightlyShadersEffect::scale(const QRect rect, qreal scaleFactor)
+QRectF
+LightlyShadersEffect::scale(const QRectF rect, qreal scaleFactor)
 {
-    return QRect(
+    return QRectF(
         rect.x()*scaleFactor,
         rect.y()*scaleFactor,
         rect.width()*scaleFactor,

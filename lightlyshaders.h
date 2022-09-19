@@ -80,11 +80,11 @@ private:
     void fillRegion(const QRegion &reg, const QColor &c);
     QPainterPath drawSquircle(float size, int translate);
     QImage genMaskImg(int size, bool mask, bool outer_rect);
-    QRect scale(const QRect rect, qreal scaleFactor);
+    QRectF scale(const QRectF rect, qreal scaleFactor);
 
     int m_size, m_alpha, m_cornersType, m_squircleRatio, m_roundness, m_shadowOffset;
     bool m_outline, m_darkTheme, m_disabledForMaximized;
-    GLShader *m_shader;
+    std::unique_ptr<GLShader> m_shader;
     QSize m_corner;
 
     QMap<EffectScreen *, LSScreenStruct> m_screens;
