@@ -467,9 +467,11 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     }
 
     QRegion blur_region = w->data(WindowBlurBehindRole).value<QRegion>();
-    if(!blur_region.isEmpty() || w->windowClass().contains("konsole", Qt::CaseInsensitive)) {   
-        if(w->windowClass().contains("konsole", Qt::CaseInsensitive)) {
-            blur_region = QRegion(0,0,geo.width(),geo.height());    
+    // force blur on these windows
+    bool window_should_blur = w->windowClass().contains("konsole", Qt::CaseInsensitive) || w->windowClass().contains("conky-window", Qt::CaseInsensitive) || w->windowClass().contains("alacritty", Qt::CaseInsensitive) || w->windowClass().contains("firefox", Qt::CaseInsensitive);
+    if(!blur_region.isEmpty() || window_should_blur) {
+        if(window_should_blur) {
+            blur_region = QRegion(0,0,geo.width(),geo.height());
         }
 
         QRegion top_left = *m_screens[s].maskRegion[TopLeft];
