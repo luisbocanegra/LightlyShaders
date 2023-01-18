@@ -5,14 +5,14 @@
     - [Ukrainian army](https://bank.gov.ua/en/about/support-the-armed-forces)
     - [Humanitarian aid to Ukraine](https://bank.gov.ua/en/about/humanitarian-aid-to-ukraine)
 
-![default](https://github.com/a-parhom/LightlyShaders/blob/v2.0/screenshot.png)
-
 # LightlyShaders v2.0
  This is a fork of Luwx's [LightlyShaders](https://github.com/Luwx/LightlyShaders), which in turn is a fork of [ShapeCorners](https://sourceforge.net/projects/shapecorners/).  
 
  This version has almost zero performance impact, it also correctly works with stock Plasma effects:
 
  ![gif](https://github.com/a-parhom/LightlyShaders/blob/v2.0/lightly_shaders_2.0.gif)
+
+ ![default](https://github.com/a-parhom/LightlyShaders/blob/v2.0/screenshot.png)
 
 # Warnings:
 
