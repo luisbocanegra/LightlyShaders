@@ -92,7 +92,11 @@ private:
 
     int m_size, m_alpha, m_cornersType, m_squircleRatio, m_roundness, m_shadowOffset;
     bool m_outline, m_darkTheme, m_disabledForMaximized;
+#if KWIN_EFFECT_API_VERSION >= 235
+    std::unique_ptr<GLShader> m_shader, m_diffShader;
+#else
     GLShader *m_shader, *m_diffShader;
+#endif
     QSize m_corner;
     qreal m_zoom=1.0, m_xTranslation=0, m_yTranslation=0;
 

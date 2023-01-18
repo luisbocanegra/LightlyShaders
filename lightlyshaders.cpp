@@ -38,8 +38,11 @@ KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(LightlyShadersFactory, LightlyShadersEffec
 KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(LightlyShadersEffect, "lightlyshaders.json", return LightlyShadersEffect::supported();, return LightlyShadersEffect::enabledByDefault();)
 #endif
 
-
+#if KWIN_EFFECT_API_VERSION >= 235
+LightlyShadersEffect::LightlyShadersEffect() : Effect()
+#else
 LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
+#endif
 {
     const auto screens = effects->screens();
     for(EffectScreen *s : screens)
@@ -78,7 +81,11 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
     }
 
     QByteArray frag = file_shader.readAll();
+#if KWIN_EFFECT_API_VERSION >= 235
+    m_shader = std::unique_ptr<GLShader>(ShaderManager::instance()->generateCustomShader(ShaderTrait::MapTexture, QByteArray(), frag));
+#else
     m_shader = ShaderManager::instance()->generateCustomShader(ShaderTrait::MapTexture, QByteArray(), frag);
+#endif
     file_shader.close();
 
     QByteArray diff_frag = file_diff_shader.readAll();
@@ -92,7 +99,11 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
         const int radius_sampler = m_shader->uniformLocation("radius_sampler");
         const int sampler_size = m_shader->uniformLocation("sampler_size");
         const int flip_shadow = m_shader->uniformLocation("flip_shadow");
+    #if KWIN_EFFECT_API_VERSION >= 235
+        ShaderManager::instance()->pushShader(m_shader.get());
+    #else
         ShaderManager::instance()->pushShader(m_shader);
+    #endif
         m_shader->setUniform(flip_shadow, 4);
         m_shader->setUniform(sampler_size, 3);
         m_shader->setUniform(radius_sampler, 2);
@@ -104,7 +115,11 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
         const int background_sampler_diff = m_diffShader->uniformLocation("background_sampler");
         const int corner_number_diff = m_diffShader->uniformLocation("corner_number");
         const int sampler_size_diff = m_diffShader->uniformLocation("sampler_size");
+    #if KWIN_EFFECT_API_VERSION >= 235
+        ShaderManager::instance()->pushShader(m_diffShader.get());
+    #else
         ShaderManager::instance()->pushShader(m_diffShader);
+    #endif
         m_diffShader->setUniform(sampler_size_diff, 3);
         m_diffShader->setUniform(corner_number_diff, 2);
         m_diffShader->setUniform(background_sampler_diff, 1);
@@ -127,10 +142,12 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect(), m_shader(0)
 
 LightlyShadersEffect::~LightlyShadersEffect()
 {
+#if KWIN_EFFECT_API_VERSION < 235
     if (m_shader)
         delete m_shader;
     if (m_diffShader)
         delete m_diffShader;
+#endif
 
     const auto screens = effects->screens();
     for(EffectScreen *s : screens)
@@ -218,7 +235,11 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
     m_windows[w].updateDiffTex = true;
     m_windows[w].skipEffect = false;
 
+#if KWIN_EFFECT_API_VERSION >= 235
+    QRectF maximized_area = effects->clientArea(MaximizeArea, w);
+#else
     QRect maximized_area = effects->clientArea(MaximizeArea, w);
+#endif
     if (maximized_area == w->frameGeometry() && m_disabledForMaximized)
         m_windows[w].skipEffect = true;
 }
@@ -420,9 +441,16 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         s = nullptr;
     }
 
+#if KWIN_EFFECT_API_VERSION >= 235
+    const QRectF s_geo(effects->virtualScreenGeometry());
+    const QRect geo(w->frameGeometry().toRect());
+    const QRegion exp_geo(w->expandedGeometry().toRect());
+#else
     const QRect s_geo(effects->virtualScreenGeometry());
     const QRect geo(w->frameGeometry());
     const QRegion exp_geo(w->expandedGeometry());
+#endif
+
     const QRegion shadow = exp_geo - geo;
 
     if(shadow.intersects(data.paint) && geo.width() != s_geo.width()) {
@@ -482,7 +510,11 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         if ((addedGrab && m_windows[window].hasFadeInAnimation != false) || !m_windows.contains(window)) continue;
 
         if(window != w) {
+        #if KWIN_EFFECT_API_VERSION >= 235
+            QRect w_geo = window->frameGeometry().toRect();
+        #else
             QRect w_geo = window->frameGeometry();
+        #endif
 
             const QRect w_rect[NTex] =
             {
@@ -580,7 +612,11 @@ LightlyShadersEffect::paintScreen(int mask, const QRegion &region, ScreenPaintDa
         set_roundness = true;
     }
 
+#if KWIN_EFFECT_API_VERSION < 235
     qreal zoom = data.xScale();
+#else
+    qreal zoom = 1.0;
+#endif
     if(zoom != m_zoom) {
         m_zoom = zoom;
         set_roundness = true;
@@ -591,8 +627,12 @@ LightlyShadersEffect::paintScreen(int mask, const QRegion &region, ScreenPaintDa
         //qDebug() << "Set roundness";
     } 
 
+#if KWIN_EFFECT_API_VERSION < 235
     m_xTranslation = data.xTranslation();
     m_yTranslation = data.yTranslation();
+#else
+    m_xTranslation = m_yTranslation = 0;
+#endif
 
     effects->paintScreen(mask, region, data);
 }
@@ -602,8 +642,10 @@ LightlyShadersEffect::isValidWindow(EffectWindow *w, int mask)
 {
 #if KWIN_EFFECT_API_VERSION < 234
     const QRect screen = GLRenderTarget::virtualScreenGeometry();
-#else
+#elif KWIN_EFFECT_API_VERSION < 235
     const QRect screen = effects->renderTargetRect();
+#else
+    const QRectF screen = QRectF(effects->renderTargetRect());
 #endif
     if (!m_shader->isValid()
             || (!w->isOnCurrentDesktop() && !(mask & PAINT_WINDOW_TRANSFORMED))
@@ -662,7 +704,11 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     //qDebug() << m_xTranslation;
     
     //map the corners
+#if KWIN_EFFECT_API_VERSION < 235
     QRect geo(w->frameGeometry());
+#else 
+    QRect geo(w->frameGeometry().toRect());
+#endif
     geo.translate(data.xTranslation(), data.yTranslation());
     const QRect geo_scaled = scale(geo, m_screens[s].scale*m_zoom);
     const QSize size_scaled(m_screens[s].sizeScaled+m_shadowOffset*m_zoom, m_screens[s].sizeScaled+m_shadowOffset*m_zoom);
@@ -718,7 +764,11 @@ LightlyShadersEffect::paintWindow(EffectWindow *w, int mask, QRegion region, Win
     const int flipShadowLocation = m_shader->uniformLocation("flip_shadow");
     ShaderManager *sm = ShaderManager::instance();
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#if KWIN_EFFECT_API_VERSION < 235
     sm->pushShader(m_shader);
+#else
+    sm->pushShader(m_shader.get());
+#endif
     for (int i = 0; i < NTex; ++i)
     {
         if(m_windows[w].clip.contains(big_rect_scaled[i].adjusted(m_screens[s].sizeScaled, m_screens[s].sizeScaled, -m_screens[s].sizeScaled, -m_screens[s].sizeScaled))) {
@@ -872,9 +922,12 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
 
     //else do 1 offscreen paint if needed and get the cache for topleft and bottomleft corners
     m_windows[w].updateDiffTex = false;
+#if KWIN_EFFECT_API_VERSION >= 235
+    const QRect w_exgeo = w->expandedGeometry().toRect();
+#else
     const QRect w_exgeo = w->expandedGeometry();
+#endif
     const QRect w_exgeo_scaled = scale(w_exgeo, m_screens[s].scale*m_zoom);
-
     //map corners
     const QRect r4[NTex] =
     {
@@ -942,7 +995,11 @@ LightlyShadersEffect::getShadowDiffs(EffectWindow *w, const QRect* rect, QList<G
     const int cornerNumberLocation = m_diffShader->uniformLocation("corner_number");
     const int samplerSizeLocation = m_diffShader->uniformLocation("sampler_size");
     ShaderManager *sm = ShaderManager::instance();
+#if KWIN_EFFECT_API_VERSION < 235
     sm->pushShader(m_diffShader);
+#else
+    sm->pushShader(m_diffShader.get());
+#endif
     int n;
     if(outOfScreen) n = NShad;
     else n = NTex;
