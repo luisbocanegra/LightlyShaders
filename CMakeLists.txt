@@ -48,6 +48,7 @@ find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
 
 find_package(X11 REQUIRED)
 find_package(XCB REQUIRED)
+find_package(KDecoration2 REQUIRED)
 
 execute_process(COMMAND kf5-config --install module OUTPUT_VARIABLE MODULEPATH OUTPUT_STRIP_TRAILING_WHITESPACE)
 
@@ -96,6 +97,7 @@ target_link_libraries(${LIGHTLYSHADERS}
         KF5::ConfigWidgets
         KF5::GuiAddons
         KF5::WindowSystem
+        KDecoration2::KDecoration
         )
 
 if (XCB_FOUND)
@@ -115,9 +117,6 @@ install(TARGETS ${LIGHTLYSHADERS} DESTINATION ${MODULEPATH}/kwin/effects/plugins
 execute_process(COMMAND kf5-config --install data OUTPUT_VARIABLE DATAPATH OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 install(FILES shaders_140/lightlyshaders.frag DESTINATION ${DATAPATH}/kwin/shaders/1.40)
-install(FILES shaders_140/lightlyshaders_diff.frag DESTINATION ${DATAPATH}/kwin/shaders/1.40)
-install(FILES shaders_110/lightlyshaders.frag DESTINATION ${DATAPATH}/kwin/shaders/1.10)
-install(FILES shaders_110/lightlyshaders_diff.frag DESTINATION ${DATAPATH}/kwin/shaders/1.10)
 
 #config
 function(kwin_add_effect_config name)

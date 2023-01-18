@@ -5,48 +5,27 @@
     - [Ukrainian army](https://bank.gov.ua/en/about/support-the-armed-forces)
     - [Humanitarian aid to Ukraine](https://bank.gov.ua/en/about/humanitarian-aid-to-ukraine)
 
+![default](https://github.com/a-parhom/LightlyShaders/blob/v2.0/screenshot.png)
 
- ![default](https://github.com/a-parhom/LightlyShaders/blob/master/screenshot.png)
- This is a fork of Luwx's [LightlyShaders](https://github.com/Luwx/LightlyShaders), which in turn is a fork of [ShapeCorners](https://sourceforge.net/projects/shapecorners/). 
+# LightlyShaders v2.0
+ This is a fork of Luwx's [LightlyShaders](https://github.com/Luwx/LightlyShaders), which in turn is a fork of [ShapeCorners](https://sourceforge.net/projects/shapecorners/).  
 
- This fork fixes the infamous [bug](https://bugs.kde.org/show_bug.cgi?id=395725) with blurred corners, as well as the [bug](https://github.com/matinlotfali/KDE-Rounded-Corners/issues/2) with cut out shadows, though in a somehow hacky way. 
- 
- Also, it adds the following functionality:
- - an additional outer dark outline; 
- - an option to make dark outline totally black (good with dark themes);
- - an option to disable plugin for maximized windows;
- - an option to use squircled corners instead of rounded (based on code from ZacharyTalis's [ShapeCorners fork](https://github.com/ZacharyTalis/ShapeCorners));
- - support for scaling on Wayland (though, fractional scaling still may cause artifacts; only integer scaling works without issues for now);
- - support for multimonitor setups on Wayland including setups with different scaling factor per monitor (still needs some work, see [issue #51](https://github.com/a-parhom/LightlyShaders/issues/51)).
+ This version has almost zero performance impact, it also correctly works with stock Plasma effects:
 
+ ![gif](https://github.com/a-parhom/LightlyShaders/blob/v2.0/lightly_shaders_2.0.gif)
 
 # Warnings:
 
-## 1. This effect is basically a hack!
-Due to the changes introduced in Plasma 5.23 there is no way to draw original shadows under rounded corners any more. 
+## 1. This version heavily relies on window decorations, that correctly work with Plasma 5.25 "korner bug" fix!
+Currently I can confirm this effect correctly works with **SierraBreezeEnhanced** or default **Breeze** (though Breeze has hardcoded corner radius at 5px). You have to make sure, that your radius settings in window decorations match with settings in LightlyShaders.
 
-In order to work around that, this fork uses a hack that tries to restore the shadow in the cut out regions based on the data from the closest regions with shadows. 
-
-Because of this it may work differently with different themes, corner radiuses or shadow settings. **Your mileage may vary.**
-
-## 2. This effect can be resource-hungry!
-Thanks to recent changes the performance of this plugin has improved. But depending on your hardware, you still can have performance hit. Or you can try and test the new upcoming version wich has almost no performance impact.
-
-
-# Try upcoming version
-If you use Plasma 5.25 and your GPU supports OpenGL 3.1, you can try the upcoming version 2.0 from the [branch v2.0](https://github.com/a-parhom/LightlyShaders/tree/v2.0).
-
-It is fully compatible with stock Plasma effects, including Wobbly windows, and has no performance impact.
-
-You will have to use it together with window decorations that deal with "korner bug", I recommend **SierraBreezeEnhanced**.
-
-## Caution!
-It is a work-in-progress branch! Things may break!
+## 2. This version will only work with GPUs, that support OpenGL 3.1 and above!
+OpenGL versions below 3.1 are not supported any more due to relying on textureSize function.
 
 
 # Dependencies:
  
-Plasma >= 5.23 (X11 and Wayland supported).
+Plasma >= 5.25 (X11 and Wayland supported).
  
 Debian based (Ubuntu, Kubuntu, KDE Neon):
 ```
@@ -69,7 +48,9 @@ sudo zypper install git cmake gcc-c++ extra-cmake-modules libqt5-qttools-devel l
 ```
 git clone https://github.com/a-parhom/LightlyShaders
 
-cd LightlyShaders; mkdir qt5build; cd qt5build; cmake ../ -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && (kwin_x11 --replace &)
+cd LightlyShaders;
+
+mkdir qt5build; cd qt5build; cmake ../ -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && (kwin_x11 --replace &)
 ```
 
 ## Note
