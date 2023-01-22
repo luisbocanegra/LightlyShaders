@@ -24,6 +24,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QStandardPaths>
+#include <QWindow>
 #include <kwinglplatform.h>
 #include <kwinglutils.h>
 #include <QMatrix4x4>
@@ -31,6 +32,7 @@
 #include <QRegularExpression>
 #include <QBitmap>
 #include <KDecoration2/Decoration>
+#include <KWindowEffects>
 
 
 namespace KWin {
@@ -42,7 +44,7 @@ KWIN_EFFECT_FACTORY_SUPPORTED_ENABLED(LightlyShadersEffect, "lightlyshaders.json
 #endif
 
 
-LightlyShadersEffect::LightlyShadersEffect() : Effect()
+LightlyShadersEffect::LightlyShadersEffect() : OffscreenEffect()
 {
     const auto screens = effects->screens();
     for(EffectScreen *s : screens)
@@ -63,7 +65,10 @@ LightlyShadersEffect::LightlyShadersEffect() : Effect()
     }
     reconfigure(ReconfigureAll);
 
-    QString shadersDir(QStringLiteral("kwin/shaders/1.40/"));
+    QString shadersDir(QStringLiteral("kwin/shaders/1.10/"));
+    const qint64 version = kVersionNumber(1, 40);
+    if (GLPlatform::instance()->glslVersion() >= version)
+        shadersDir = QStringLiteral("kwin/shaders/1.40/");
 
     const QString shader = QStandardPaths::locate(QStandardPaths::GenericDataLocation, shadersDir + QStringLiteral("lightlyshaders.frag"));
 
@@ -222,6 +227,8 @@ LightlyShadersEffect::windowAdded(EffectWindow *w)
     QRectF maximized_area = effects->clientArea(MaximizeArea, w);
     if (maximized_area == w->frameGeometry() && m_disabledForMaximized)
         m_windows[w].skipEffect = true;
+    
+    redirect(w);
 }
 
 void 
@@ -466,7 +473,38 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
     #endif
     }
 
-    QRegion blur_region = w->data(WindowBlurBehindRole).value<QRegion>();
+    // Blur
+    QRegion blur_region;
+    bool valid = false;
+    long net_wm_blur_region = 0;
+
+    if (effects->xcbConnection()) {
+        net_wm_blur_region = effects->announceSupportProperty(QByteArrayLiteral("_KDE_NET_WM_BLUR_BEHIND_REGION"), this);
+    }
+
+    if (net_wm_blur_region != XCB_ATOM_NONE) {
+        const QByteArray value = w->readProperty(net_wm_blur_region, XCB_ATOM_CARDINAL, 32);
+        if (value.size() > 0 && !(value.size() % (4 * sizeof(uint32_t)))) {
+            const uint32_t *cardinals = reinterpret_cast<const uint32_t *>(value.constData());
+            for (unsigned int i = 0; i < value.size() / sizeof(uint32_t);) {
+                int x = cardinals[i++];
+                int y = cardinals[i++];
+                int w = cardinals[i++];
+                int h = cardinals[i++];
+                blur_region += QRect(x, y, w, h);
+            }
+        }
+        valid = !value.isNull();
+    }
+
+    if (auto internal = w->internalWindow()) {
+        const auto property = internal->property("kwin_blur");
+        if (property.isValid()) {
+            blur_region = property.value<QRegion>();
+            valid = true;
+        }
+    }
+
     if(!blur_region.isEmpty() || w->windowClass().contains("konsole", Qt::CaseInsensitive)) {   
         if(w->windowClass().contains("konsole", Qt::CaseInsensitive)) {
             blur_region = QRegion(0,0,geo.width(),geo.height());    
@@ -487,9 +525,10 @@ LightlyShadersEffect::prePaintWindow(EffectWindow *w, WindowPrePaintData &data, 
         QRegion bottom_left = *m_screens[s].maskRegion[BottomLeft];
         bottom_left.translate(0-m_shadowOffset+1, w->contentsRect().height()-m_size-1);
         blur_region = blur_region.subtracted(bottom_left);
-        
-        w->setData(WindowBlurBehindRole, blur_region);
+
+        KWindowEffects::enableBlurBehind(w->windowId(), true, blur_region);
     }
+    // end blur
 
     if(w->decoration() != nullptr && w->decoration()->shadow() != nullptr ) {
         const QImage shadow = w->decoration()->shadow()->shadow();
@@ -601,8 +640,6 @@ LightlyShadersEffect::drawWindow(EffectWindow *w, int mask, const QRegion &regio
     ShaderManager *sm = ShaderManager::instance();
     sm->pushShader(m_shader.get());
 
-    data.shader = m_shader.get();
-
     bool is_wayland = effects->waylandDisplay() != nullptr;
     //qDebug() << geo_scaled.width() << geo_scaled.height();
     m_shader->setUniform(frameSizeLocation, QVector2D(geo_scaled.width(), geo_scaled.height()));
@@ -625,7 +662,10 @@ LightlyShadersEffect::drawWindow(EffectWindow *w, int mask, const QRegion &regio
     glActiveTexture(GL_TEXTURE1);
     m_screens[s].maskTex->bind();
     glActiveTexture(GL_TEXTURE0);
-    effects->drawWindow(w, mask, region, data);
+    
+    setShader(w, m_shader.get());
+    OffscreenEffect::drawWindow(w, mask, region, data);
+
     m_screens[s].maskTex->unbind();
     m_screens[s].lightOutlineTex->unbind();
     m_screens[s].darkOutlineTex->unbind();
@@ -652,11 +692,10 @@ LightlyShadersEffect::enabledByDefault()
 bool
 LightlyShadersEffect::supported()
 {
-    const qint64 version = kVersionNumber(1, 40);
 #if KWIN_EFFECT_API_VERSION < 234
-    return effects->isOpenGLCompositing() && GLRenderTarget::supported() && GLPlatform::instance()->glslVersion() >= version;
+    return effects->isOpenGLCompositing() && GLRenderTarget::supported();
 #else
-    return effects->isOpenGLCompositing() && GLFramebuffer::supported() && GLPlatform::instance()->glslVersion() >= version;
+    return effects->isOpenGLCompositing() && GLFramebuffer::supported();
 #endif
 }
 

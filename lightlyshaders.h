@@ -20,13 +20,13 @@
 #ifndef LIGHTLYSHADERS_H
 #define LIGHTLYSHADERS_H
 
-#include <kwineffects.h>
+#include <kwinoffscreeneffect.h>
 
 namespace KWin {
 
 class GLTexture;
 
-class Q_DECL_EXPORT LightlyShadersEffect : public Effect
+class Q_DECL_EXPORT LightlyShadersEffect : public OffscreenEffect
 {
     Q_OBJECT
 public:

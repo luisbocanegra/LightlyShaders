@@ -5,27 +5,29 @@
     - [Ukrainian army](https://bank.gov.ua/en/about/support-the-armed-forces)
     - [Humanitarian aid to Ukraine](https://bank.gov.ua/en/about/humanitarian-aid-to-ukraine)
 
-# LightlyShaders v2.0
+# LightlyShaders v2.1
  This is a fork of Luwx's [LightlyShaders](https://github.com/Luwx/LightlyShaders), which in turn is a fork of [ShapeCorners](https://sourceforge.net/projects/shapecorners/).  
 
- This version has almost zero performance impact, it also correctly works with stock Plasma effects:
+ It works correctly with stock Plasma effects:
 
  ![gif](https://github.com/a-parhom/LightlyShaders/blob/v2.0/lightly_shaders_2.0.gif)
 
  ![default](https://github.com/a-parhom/LightlyShaders/blob/v2.0/screenshot.png)
 
-# Warnings:
+# Warning:
 
-## 1. This version heavily relies on window decorations, that correctly work with Plasma 5.25 "korner bug" fix!
-Currently I can confirm this effect correctly works with **SierraBreezeEnhanced** or default **Breeze** (though Breeze has hardcoded corner radius at 5px). You have to make sure, that your radius settings in window decorations match with settings in LightlyShaders.
+## On Wayland corners may have "korner bug" when using blur due to the lack of API for adjusting blur region on Plasma 5.27.
 
-## 2. This version will only work with GPUs, that support OpenGL 3.1 and above!
-OpenGL versions below 3.1 are not supported any more due to relying on textureSize function.
+## This version heavily relies on window decorations, that correctly work with Plasma 5.25 "korner bug" fix!
+Currently I can confirm this effect correctly works with **SierraBreezeEnhanced** or default **Breeze** (though Breeze has hardcoded corner radius). You have to make sure, that your radius settings in window decorations match with settings in LightlyShaders.  
+
+## Alternatively you can try my new project: [RoundedSBE](https://github.com/a-parhom/RoundedSBE)
+This is a fork of **SierraBreezeEnhanced** window decoration with a built-in corner-rounding effect **CornersShader** - a simplified version of LightlyShaders, integrated with RoundedSBE's configuration. It is in it's early stage, contains bugs, some features are still missing.
 
 
 # Dependencies:
  
-Plasma >= 5.25 (X11 and Wayland supported).
+Plasma >= 5.27 (or 5.26.90).
  
 Debian based (Ubuntu, Kubuntu, KDE Neon):
 ```
