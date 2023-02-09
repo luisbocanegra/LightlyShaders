@@ -119,6 +119,7 @@ install(TARGETS ${LIGHTLYSHADERS} DESTINATION ${MODULEPATH}/kwin/effects/plugins
 
 execute_process(COMMAND kf5-config --install data OUTPUT_VARIABLE DATAPATH OUTPUT_STRIP_TRAILING_WHITESPACE)
 
+install(FILES shaders_110/lightlyshaders.frag DESTINATION ${DATAPATH}/kwin/shaders/1.10)
 install(FILES shaders_140/lightlyshaders.frag DESTINATION ${DATAPATH}/kwin/shaders/1.40)
 
 #config
