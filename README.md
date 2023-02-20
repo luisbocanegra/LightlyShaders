@@ -22,7 +22,7 @@
 Currently I can confirm this effect correctly works with **SierraBreezeEnhanced** or default **Breeze** (though Breeze has hardcoded corner radius). You have to make sure, that your radius settings in window decorations match with settings in LightlyShaders.  
 
 ## Alternatively you can try my new project: [RoundedSBE](https://github.com/a-parhom/RoundedSBE)
-This is a fork of **SierraBreezeEnhanced** window decoration with a built-in corner-rounding effect **CornersShader** - a simplified version of LightlyShaders, integrated with RoundedSBE's configuration. It is in it's early stage, contains bugs, some features are still missing.
+This is a fork of **SierraBreezeEnhanced** window decoration with a built-in corner-rounding effect **CornersShader** - a simplified version of LightlyShaders, integrated with RoundedSBE's configuration. It is in it's early stage, may have bugs and/or missing features.
 
 
 # Dependencies:
