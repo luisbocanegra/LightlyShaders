@@ -27,7 +27,7 @@ This is a fork of **SierraBreezeEnhanced** window decoration with a built-in cor
 
 # Dependencies:
  
-Plasma >= 5.27 (or 5.26.90).
+Plasma >= 5.27 (5.27.1 to fix issue #87).
  
 Debian based (Ubuntu, Kubuntu, KDE Neon):
 ```
