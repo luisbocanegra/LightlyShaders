@@ -16,7 +16,7 @@
 
 # Warning:
 
-## On Wayland corners may have "korner bug" when using blur due to the lack of API for adjusting blur region on Plasma 5.27.
+## On Wayland corners may have "korner bug" when using blur due to the lack of [API for adjusting blur region](https://invent.kde.org/plasma/kwin/-/merge_requests/3407) on Plasma 5.27.
 
 ## This version heavily relies on window decorations, that correctly work with Plasma 5.25 "korner bug" fix!
 Currently I can confirm this effect correctly works with **SierraBreezeEnhanced** or default **Breeze** (though Breeze has hardcoded corner radius). You have to make sure, that your radius settings in window decorations match with settings in LightlyShaders.  
